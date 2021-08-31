@@ -573,7 +573,7 @@ function addOffer() {
       document.getElementById('authcontent').innerHTML += "<br><p>Longitude</p>";
       document.getElementById('authcontent').innerHTML += '<input maxlength = 500 type="text" id="serviceLongitudeId">';
       document.getElementById('authcontent').innerHTML += "<p>Example: -80.529250</p>";
-      document.getElementById('authcontent').innerHTML += "<p><input type='checkbox' id='myCheck' onclick='insertButtonAdd();'> I will not ask for a vaccine passport or any other mark to discriminate between people as a condition for entering my place.</p>";
+      document.getElementById('authcontent').innerHTML += "<p><input type='checkbox' id='myCheck' onclick='insertButtonAdd();'> I will not ask for a vaccination passport or any other mark to discriminate between people as a condition for entering the place where I offer my service. My service meets my local legal regulations and the legal regulations of Ontario, Canada; if not, Caballero Software Inc. will delete my account. If my service involves anything that may be illegal, Caballero Software Inc. will contact the relevant authorities.</p>";
       document.getElementById('authcontent').innerHTML += "<div id='confirmButtonAddId'></div>";
       document.getElementById("authcontent").innerHTML += "<Br></Br><button onclick='goToPage(5);'>Back to Main</button><Br></Br>";
       break;
@@ -598,7 +598,7 @@ function addOffer() {
       document.getElementById('authcontent').innerHTML += "<br><p>Longitude</p>";
       document.getElementById('authcontent').innerHTML += '<input maxlength = 500 type="text" id="serviceLongitudeId">';
       document.getElementById('authcontent').innerHTML += "<p>Exemple : -80.529250</p>";
-      document.getElementById('authcontent').innerHTML += "<p><input type='checkbox' id='myCheck' onclick='insertButtonAdd();'> Je ne demanderai pas de passeport vaccinal ou toute autre marque pour discriminer entre les personnes comme condition d'entrée chez moi.</p>";
+      document.getElementById('authcontent').innerHTML += "<p><input type='checkbox' id='myCheck' onclick='insertButtonAdd();'> Je ne demanderai pas de passeport de vaccination ou toute autre marque pour discriminer entre les personnes comme condition d'entrée dans le lieu où j'offre mon service. Mon service respecte mes réglementations légales locales et les réglementations légales de l'Ontario, Canada ; sinon, Caballero Software Inc. supprimera mon compte. Si mon service implique quelque chose qui peut être illégal, Caballero Software Inc. contactera les autorités compétentes.</p>";
       document.getElementById('authcontent').innerHTML += "<div id='confirmButtonAddId'></div>";
       document.getElementById("authcontent").innerHTML += "<Br></Br><button onclick='goToPage(5);'>Retour à la page principale</button><Br></Br>";
       break;
