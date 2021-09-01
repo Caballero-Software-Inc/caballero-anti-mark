@@ -130,6 +130,9 @@ providers.find({}).exec(function (err, docs) {
 const app = express();
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log('listening at ' + port));
+
+app.disable('etag');//to guarantee that res.statusCode = 200, unless there is an error
+
 app.use(express.static('public'));
 app.use(express.json({ limit: '5mb' }));
 
@@ -285,13 +288,28 @@ app.post('/newoffer', (request, response) => {
     autoSave();
 });
 
-app.post('/seealloffers', (request, response) => {
+
+
+app.get('/seealloffers', (request, response) => {
     let offers = [];
+    let nearOffers;
+    const point1 = { lat: parseFloat(request.query.lat), lon: parseFloat(request.query.lon) };
+    const dist = parseFloat(request.query.dist);
     for (let j = 0; j < users.length; j++) {
-        offers = offers.concat(users[j].offers);
+        nearOffers = users[j].offers.filter(offer => {
+            const point2 = offer.location;
+            if (distance(point1, point2) <= dist) {
+                return true
+            } else {
+                return false
+            }
+        });
+        offers = offers.concat(nearOffers);
     };
     response.json({ ok: true, offers });
 });
+
+
 
 app.post('/seeoffers', (request, response) => {
     let j = 0;
@@ -319,3 +337,27 @@ app.post('/apiupdatedata', (request, response) => {
 });
 
 
+function toRad(x) {
+    return x * Math.PI / 180;
+}
+
+function distance(x, y) {
+    // Haversine formula 
+    // https://www.wikiwand.com/en/Haversine_formula
+    const lat1 = x.lat;
+    const lat2 = y.lat;
+    const lon1 = x.lon;
+    const lon2 = y.lon;
+
+    let R = 6371; // km
+    let x1 = lat2 - lat1;
+    let dLat = toRad(x1);
+    let x2 = lon2 - lon1;
+    let dLon = toRad(x2);
+    let a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c // in km
+}

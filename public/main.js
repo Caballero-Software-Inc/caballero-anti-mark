@@ -1,14 +1,16 @@
 'use strict';
 
-const version = "1.0.0-beta";
+const version = "1.1.0-beta";
 
 let userLang = localStorage.getItem("userLang");
 if (userLang == null) {
   userLang = 0;
-};
+} else {
+  userLang = parseInt(userLang);
+}
 
 const lang = ["English", "Français"];
-const currentPage = ["admin", "intro", "open", "auth", "retrieve", "offer", "search", "addOffer", "myOffers"];
+const currentPage = ["adminMenu", "intro", "openAccount", "existingUser", "forgotIdentifier", "userMenu", "searchMenu", "addOffer", "myOffers", "proceedSearch"];
 
 const locUpdateTime = 1000; // update of location (in the server)
 
@@ -25,6 +27,10 @@ let page = localStorage.getItem("page");
 let userId = localStorage.getItem("userId");
 let userEmail = localStorage.getItem("userEmail");
 let providers = localStorage.getItem("providers");
+let newMap = true;
+let myMap;
+
+
 
 let checkOpen = true; // check to open an account
 
@@ -42,11 +48,12 @@ function makeId(length) {
   return result;
 }
 
+
 /* I am new */
 
 function openAccount() {
   languageChoice();
-  switch (parseInt(userLang)) {
+  switch (userLang) {
     case 0:
       document.getElementById('webcontent').innerHTML = "<h2>Open a new account</h2>";
       document.getElementById('webcontent').innerHTML += "<p><input type='checkbox' id='myCheck' onclick='insertButton();'> I accept the <a href='PrivacyPolicy.html'>Privacy Policy</a> and the <a href='TermsandConditions.html'>Terms and Conditions</a>.</p>";
@@ -86,7 +93,7 @@ function mainOpen() {
   fetch('/newaccount', options).then(async response => {
     let respo = await response.json();
     if (respo.ok) {
-      switch (parseInt(userLang)) {
+      switch (userLang) {
         case 0:
           document.getElementById('webcontent').innerHTML = "<h2>To ensure that this email is yours, Caballero Software Inc. will send you an email with your identifier.</h2>";
           document.getElementById('webcontent').innerHTML += "<h3>This email will be sent from: caballerosoftwareinc at gmail dot com</h3>";
@@ -102,7 +109,7 @@ function mainOpen() {
           break;
       };
     } else {
-      switch (parseInt(userLang)) {
+      switch (userLang) {
         case 0:
           document.getElementById('webcontent').innerHTML = "<h2>There is already a user with this email.</h2>";
           document.getElementById('webcontent').innerHTML += "<br><br><button onclick='goToPage(1);'>Home</button>";
@@ -122,7 +129,7 @@ function mainOpen() {
 
 function insertButton() {
   if (checkOpen) {
-    switch (parseInt(userLang)) {
+    switch (userLang) {
       case 0:
         document.getElementById("confirmButtonId").innerHTML = "<h2>Email</h2>";
         document.getElementById("confirmButtonId").innerHTML += "<p><input type='text' id='emailId'></p>";
@@ -221,7 +228,7 @@ function authentication() {
         goToPage(5)
       }
     } else {
-      switch (parseInt(userLang)) {
+      switch (userLang) {
         case 0:
           document.getElementById('webcontent').innerHTML += "<p>Authentication error. Try again.</p>";
           break;
@@ -238,7 +245,7 @@ function authentication() {
 
 function existingUser() {
   languageChoice();
-  switch (parseInt(userLang)) {
+  switch (userLang) {
     case 0:
       document.getElementById('webcontent').innerHTML += "<h3>Email</h3><br>";
       document.getElementById('webcontent').innerHTML += '<p><input type="text" id="emailId"></p>';
@@ -265,7 +272,7 @@ function existingUser() {
 
 function forgotIdentifier() {
   languageChoice();
-  switch (parseInt(userLang)) {
+  switch (userLang) {
     case 0:
       document.getElementById('webcontent').innerHTML += "<h4>To retrieve your identifier, enter your email</h4>";
       document.getElementById('webcontent').innerHTML += "<h3>Email</h3><br>";
@@ -302,7 +309,7 @@ function retrieveIdentifier() {
   fetch('/apiretrieveidentifier', options).then(async response => {
     let respo = await response.json();
     if (respo.ok) {
-      switch (parseInt(userLang)) {
+      switch (userLang) {
         case 0:
           document.getElementById('webcontent').innerHTML = "<h3>An email containing your identifier was sent to you from: caballerosoftwareinc at gmail dot com</h3>";
           document.getElementById('webcontent').innerHTML += "<br><br><button onclick='goToPage(1);'>Home</button>";
@@ -317,7 +324,7 @@ function retrieveIdentifier() {
       };
 
     } else {
-      switch (parseInt(userLang)) {
+      switch (userLang) {
         case 0:
           document.getElementById('webcontent').innerHTML = "<h3>It was not possible to request the recovery of the identifier.</h3>";
           document.getElementById('webcontent').innerHTML += "<br><br><button onclick='goToPage(1);'>Home</button>";
@@ -351,7 +358,7 @@ function logoutAdmin() {
 }
 
 function deleteUser() {
-  switch (parseInt(userLang)) {
+  switch (userLang) {
     case 0:
       if (confirm("Are you sure you want to delete your account?")) {
 
@@ -410,7 +417,7 @@ function deleteUser() {
 
 function introMenu() {
   languageChoice();
-  switch (parseInt(userLang)) {
+  switch (userLang) {
     case 0:
       document.getElementById('titlePageId').innerHTML = "Caballero|AntiMark";
       document.getElementById('allId').lang = 'en';
@@ -496,7 +503,7 @@ function languageChoice() {
 
 function userMenu() {
   languageChoice();
-  switch (parseInt(userLang)) {
+  switch (userLang) {
     case 0:
       document.getElementById('titleId').innerHTML = '<h1 class="w3-margin w3-xlarge">' + userEmail + '</h1>';
       document.getElementById('titleId').innerHTML += "<h2>Provider account</h2>";
@@ -531,7 +538,7 @@ function userMenu() {
 
 function insertButtonAdd() {
   if (checkAdd) {
-    switch (parseInt(userLang)) {
+    switch (userLang) {
       case 0:
         document.getElementById("confirmButtonAddId").innerHTML = "<Br></Br><button onclick='addOfferMain();'>Add</button><Br></Br>";
         break;
@@ -551,7 +558,7 @@ function insertButtonAdd() {
 
 function addOffer() {
   languageChoice();
-  switch (parseInt(userLang)) {
+  switch (userLang) {
     case 0:
       document.getElementById('titleId').innerHTML = '<h1 class="w3-margin w3-xlarge">' + userEmail + '</h1>';
       document.getElementById('titleId').innerHTML += "<h2>Add offer</h2>";
@@ -655,7 +662,7 @@ function myOffers() {
     let respo = await response.json();
 
     languageChoice();
-    switch (parseInt(userLang)) {
+    switch (userLang) {
       case 0:
         document.getElementById('webcontent').innerHTML = "<h2>My offers</h2>";
         for (let i = 0; i < respo.offers.length; i++) {
@@ -691,71 +698,161 @@ function myOffers() {
 }
 
 
-function searchMenu() {
-  const options = {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({})
+function showSearch() {
+  let offers = JSON.parse(localStorage.getItem("offersList"));
+  let lat = parseFloat(localStorage.getItem("myLat"));
+  let lon = parseFloat(localStorage.getItem("myLon"));
+  let dist = parseFloat(localStorage.getItem("maxDist"));
+
+  document.getElementById('authcontent').innerHTML += "<div id='mapid'></div>";
+  languageChoice();
+
+  let zoom;
+  let center;
+
+  if (newMap) {
+    center = [lat, lon];
+    newMap = false;
+    zoom = 18;
+  } else {
+    zoom = myMap.getZoom();
+    center = myMap.getCenter();
+    myMap.remove();
+
+  }
+  myMap = L.map('mapid').setView(center, zoom);
+  const attribution =
+    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+  const tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+  const tiles = L.tileLayer(tileUrl, { attribution });
+  tiles.addTo(myMap);
+
+
+  L.marker([lat, lon]).addTo(myMap);
+
+  switch (userLang) {
+    case 0:
+      document.getElementById('webcontent').innerHTML = "<h2>Non-essential services accepting unvaccinated people</h2>";
+      for (let i = 0; i < offers.length; i++) {
+        document.getElementById('webcontent').innerHTML += '<hr style="height:2px;border-width:0;color:gray;background-color:gray">';
+        document.getElementById('webcontent').innerHTML += "<p>Offer number: " + (i + 1) + "</p>";
+        document.getElementById('webcontent').innerHTML += "<p>Kind: " + offers[i].kind + "</p>";
+        document.getElementById('webcontent').innerHTML += "<p>Description: " + offers[i].description + "</p>";
+        document.getElementById('webcontent').innerHTML += "<p>Website: <a href = '" + offers[i].website + "'>" + offers[i].website + "</a></p>";
+        document.getElementById('webcontent').innerHTML += "<p>Location: latitude = " + offers[i].location.lat + ", longitude = " + offers[i].location.lon + "</p>";
+        L.circle([offers[i].location.lat, offers[i].location.lon], {
+          color: 'black',
+          fillColor: '#f03',
+          fillOpacity: 0.5,
+          radius: 8
+        }).addTo(myMap).bindPopup("" + (i + 1), { noHide: true })
+      }
+      document.getElementById('webcontent').innerHTML += '<hr style="height:2px;border-width:0;color:gray;background-color:gray">';
+      document.getElementById('webcontent').innerHTML += "<br><br><button onclick='goToPage(6);'>New Search</button>";
+      document.getElementById('webcontent').innerHTML += "<br><br><button onclick='goToPage(1);'>Home</button><Br></Br>";
+      break;
+    case 1:
+      document.getElementById('webcontent').innerHTML = "<h2>Services non essentiels acceptant des personnes non vaccinées</h2>";
+      for (let i = 0; i < offers.length; i++) {
+        document.getElementById('webcontent').innerHTML += '<hr style="height:2px;border-width:0;color:gray;background-color:gray">';
+        document.getElementById('webcontent').innerHTML += "<p>Numéro de l'offre : " + (i + 1) + "</p>";
+        document.getElementById('webcontent').innerHTML += "<p>Type : " + offers[i].kind + "</p>";
+        document.getElementById('webcontent').innerHTML += "<p>Description : " + offers[i].description + "</p>";
+        document.getElementById('webcontent').innerHTML += "<p>Site Internet : <a href = '" + offers[i].website + "'>" + offers[i].website + "</a></p>";
+        document.getElementById('webcontent').innerHTML += "<p>Emplacement: latitude = " + offers[i].location.lat + ", longitude = " + offers[i].location.lon + "</p>";
+      }
+      document.getElementById('webcontent').innerHTML += '<hr style="height:2px;border-width:0;color:gray;background-color:gray">';
+      document.getElementById('webcontent').innerHTML += "<br><br><button onclick='goToPage(6);'>Nouvelle recherche</button>";
+      document.getElementById('webcontent').innerHTML += "<br><br><button onclick='goToPage(1);'>Accueil</button><Br></Br>";
+      break;
+    default:
+      document.getElementById('titleId').innerHTML = '<h1 class="w3-margin w3-xlarge">???</h1>';
+      break;
   };
+}
 
-  fetch('/seealloffers', options).then(async response => {
+function proceedSearch() {
+  let lat = document.getElementById('serviceLatitudeId').value;
+  let lon = document.getElementById('serviceLongitudeId').value;
+  let dist = document.getElementById('serviceMaxDistId').value;
+  fetch('/seealloffers?lat='+lat+'&lon='+lon+'&dist='+dist).then(async response => {
     let respo = await response.json();
-
-    languageChoice();
-    switch (parseInt(userLang)) {
-      case 0:
-        document.getElementById('webcontent').innerHTML = "<h2>Non-essential services accepting unvaccinated people</h2>";
-        for (let i = 0; i < respo.offers.length; i++) {
-          document.getElementById('webcontent').innerHTML += '<hr style="height:2px;border-width:0;color:gray;background-color:gray">';
-          document.getElementById('webcontent').innerHTML += "<p>Offer number: " + (i + 1) + "</p>";
-          document.getElementById('webcontent').innerHTML += "<p>Kind: " + respo.offers[i].kind + "</p>";
-          document.getElementById('webcontent').innerHTML += "<p>Description: " + respo.offers[i].description + "</p>";
-          document.getElementById('webcontent').innerHTML += "<p>Website: <a href = '" + respo.offers[i].website + "'>" + respo.offers[i].website + "</a></p>";
-          document.getElementById('webcontent').innerHTML += "<p>Location: latitude = " + respo.offers[i].location.lat + ", longitude = " + respo.offers[i].location.lon + "</p>";
-        }
-        document.getElementById('webcontent').innerHTML += '<hr style="height:2px;border-width:0;color:gray;background-color:gray">';
-        document.getElementById('webcontent').innerHTML += "<br><br><button onclick='goToPage(1);'>Home</button>";
-        break;
-      case 1:
-        document.getElementById('webcontent').innerHTML = "<h2>Services non essentiels acceptant des personnes non vaccinées</h2>";
-        for (let i = 0; i < respo.offers.length; i++) {
-          document.getElementById('webcontent').innerHTML += '<hr style="height:2px;border-width:0;color:gray;background-color:gray">';
-          document.getElementById('webcontent').innerHTML += "<p>Numéro de l'offre : " + (i + 1) + "</p>";
-          document.getElementById('webcontent').innerHTML += "<p>Type : " + respo.offers[i].kind + "</p>";
-          document.getElementById('webcontent').innerHTML += "<p>Description : " + respo.offers[i].description + "</p>";
-          document.getElementById('webcontent').innerHTML += "<p>Site Internet : <a href = '" + respo.offers[i].website + "'>" + respo.offers[i].website + "</a></p>";
-          document.getElementById('webcontent').innerHTML += "<p>Emplacement: latitude = " + respo.offers[i].location.lat + ", longitude = " + respo.offers[i].location.lon + "</p>";
-        }
-        document.getElementById('webcontent').innerHTML += '<hr style="height:2px;border-width:0;color:gray;background-color:gray">';
-        document.getElementById('webcontent').innerHTML += "<br><br><button onclick='goToPage(1);'>Accueil</button>";
-        break;
-      default:
-        document.getElementById('titleId').innerHTML = '<h1 class="w3-margin w3-xlarge">???</h1>';
-        break;
-    };
+    let offersList = await respo.offers;
+    localStorage.setItem('offersList', JSON.stringify(offersList));
+    localStorage.setItem('myLat', lat);
+    localStorage.setItem('myLon', lon);
+    localStorage.setItem('maxDist', dist);
+    goToPage(9)
   });
 }
 
+function searchMenu() {
+  languageChoice();
+  switch (userLang) {
+    case 0:
+      document.getElementById('webcontent').innerHTML = "<h2>Parameters of the search</h2>";
+      document.getElementById('webcontent').innerHTML += "<br><h4>My Coordinates</h4>";
+      document.getElementById('webcontent').innerHTML += "<br><p><a href='https://www.latlong.net/convert-address-to-lat-long.html'>https://www.latlong.net/convert-address-to-lat-long.html</a> is a web app external to our service (not controlled by Caballero Software Inc.) to find the coordinates of a place from the address.</p>";
+      document.getElementById('webcontent').innerHTML += "<br><p>Latitude</p>";
+      document.getElementById('webcontent').innerHTML += '<input maxlength = 500 type="text" id="serviceLatitudeId">';
+      document.getElementById('webcontent').innerHTML += "<p>Example: 43.481050</p>";
+      document.getElementById('webcontent').innerHTML += "<br><p>Longitude</p>";
+      document.getElementById('webcontent').innerHTML += '<input maxlength = 500 type="text" id="serviceLongitudeId">';
+      document.getElementById('webcontent').innerHTML += "<p>Example: -80.529250</p>";
+      document.getElementById('webcontent').innerHTML += "<br><h4>Maximum distance from me in km</h4>";
+      document.getElementById('webcontent').innerHTML += '<input maxlength = 500 type="text" id="serviceMaxDistId">';
+      document.getElementById('webcontent').innerHTML += "<p>Example: 5</p>";
+      document.getElementById('webcontent').innerHTML += "<br><br><button onclick='myLocation();'>My location</button>";
+      document.getElementById('webcontent').innerHTML += "<br><br><button onclick='proceedSearch();'>See offers</button>";
+      break;
+    case 1:
+      document.getElementById('webcontent').innerHTML = "<h2>Paramètres de la recherche</h2>";
+      document.getElementById('webcontent').innerHTML += "<br><h4>Mes Coordonnées</h4>";
+      document.getElementById('webcontent').innerHTML += "<br><p><a href='https://www.latlong.net/convert-address-to-lat-long.html'>https://www.latlong.net/convert-address-to-lat-long.html</a> est une application web externe à notre service (non contrôlé par Caballero Software Inc.) pour trouver les coordonnées d'un lieu à l'adresse.</p>";
+      document.getElementById('webcontent').innerHTML += "<br><p>Latitude</p>";
+      document.getElementById('webcontent').innerHTML += '<input maxlength = 500 type="text" id="serviceLatitudeId">';
+      document.getElementById('webcontent').innerHTML += "<p>Exemple : 43.481050</p>";
+      document.getElementById('webcontent').innerHTML += "<br><p>Longitude</p>";
+      document.getElementById('webcontent').innerHTML += '<input maxlength = 500 type="text" id="serviceLongitudeId">';
+      document.getElementById('webcontent').innerHTML += "<p>Exemple : -80.529250</p>";
+      document.getElementById('webcontent').innerHTML += "<br><h4>Distance maximale de moi en km</h4>";
+      document.getElementById('webcontent').innerHTML += '<input maxlength = 500 type="text" id="serviceMaxDistId">';
+      document.getElementById('webcontent').innerHTML += "<p>Exemple : 5</p>";
+      document.getElementById('webcontent').innerHTML += "<br><br><button onclick='myLocation();'>Ma position</button>";
+      document.getElementById('webcontent').innerHTML += "<br><br><button onclick='proceedSearch();'>Voir les offres</button>";
+      break;
+    default:
+      document.getElementById('titleId').innerHTML = '<h1 class="w3-margin w3-xlarge">???</h1>';
+      break;
+  };
+}
+
+
+function myLocation() {
+  navigator.geolocation.getCurrentPosition(position => {
+    document.getElementById('serviceLatitudeId').value = position.coords.latitude;
+    document.getElementById('serviceLongitudeId').value = position.coords.longitude;
+    document.getElementById('serviceMaxDistId').value = 5;
+  });
+}
 
 switch (page) {
-  case "admin":
+  case "adminMenu":
     adminMenu();
     break;
-  case "open":
+  case "openAccount":
     openAccount();
     break;
-  case "auth":
+  case "existingUser":
     existingUser();
     break;
-  case "retrieve":
+  case "forgotIdentifier":
     forgotIdentifier();
     break;
-  case "offer":
+  case "userMenu":
     userMenu();
     break;
-  case "search":
+  case "searchMenu":
     searchMenu();
     break
   case "addOffer":
@@ -763,6 +860,9 @@ switch (page) {
     break;
   case "myOffers":
     myOffers();
+    break;
+  case "proceedSearch":
+    showSearch();
     break;
   default:
     introMenu();
