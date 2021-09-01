@@ -1,5 +1,30 @@
 'use strict';
 
+let crypto;
+try {
+  crypto = require('crypto');
+} catch (err) {
+  console.log('crypto support is disabled!');
+}
+/* License
+
+[The MIT License (MIT)](http://opensource.org/licenses/MIT)
+
+Copyright (c) 2009-2013 Jeff Mott  
+Copyright (c) 2013-2016 Evan Vosberg
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+*/
+
+
 require('dotenv').config();
 /*Copyright (c) 2015, Scott Motte
 All rights reserved.
@@ -24,13 +49,13 @@ const lKey = 50;/* length of the key */
 const appLogin = 'caballerosoftwareinc@gmail.com';
 const appPassword = process.env.APPPASSWORD;
 
+// it is cryptographically secure
 function makeId(length) {
     let result = '';
     let characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let charactersLength = characters.length;
     for (let i = 0; i < length; i++) {
-        result += characters.charAt(Math.floor(Math.random() *
-            charactersLength));
+        result += characters.charAt( crypto.randomInt(charactersLength) );
     }
     return result;
 }
@@ -292,7 +317,5 @@ app.post('/apiupdatedata', (request, response) => {
     users = request.body.file.split('\n').filter(x => x != '').map(x => JSON.parse(x));
     response.json({ ok: true });
 });
-
-
 
 

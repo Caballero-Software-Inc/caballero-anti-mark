@@ -8,19 +8,21 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "nodemailer": "^6.6.3",
-    "nedb": "^1.8.0",
+    "crypto": "^1.0.1",
     "dotenv": "^10.0.0",
-    "express": "^4.17.1"
+    "express": "^4.17.1",
+    "nedb": "^1.8.0",
+    "nodemailer": "^6.6.3"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Caballero-Software-Inc/caballero-door.git"
   },
   "author": "Jose Manuel Rodriguez Caballero",
-  "license": "",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/Caballero-Software-Inc/caballero-door/issues"
   },
-  "homepage": "https://github.com/Caballero-Software-Inc/caballero-door#readme"
+  "homepage": "https://github.com/Caballero-Software-Inc/caballero-door#readme",
+  "devDependencies": {}
 }

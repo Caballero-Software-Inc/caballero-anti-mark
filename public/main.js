@@ -30,7 +30,7 @@ let checkOpen = true; // check to open an account
 
 let checkAdd = true; // check to add new offer
 
-
+// it is not cryptographically secure
 function makeId(length) {
   let result = '';
   let characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
