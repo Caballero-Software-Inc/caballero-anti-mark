@@ -1,7 +1,5 @@
 'use strict';
 
-const cors = require("cors");
-
 let crypto;
 try {
   crypto = require('crypto');
@@ -130,6 +128,34 @@ providers.find({}).exec(function (err, docs) {
 
 /* creating app */
 const app = express();
+
+
+const cors = require("cors");
+/* 
+(The MIT License)
+
+Copyright (c) 2013 Troy Goode <troygoode@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+*/
+
+app.use(
+    cors({
+        origin: "*"
+    })
+)
+
+
+
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log('listening at ' + port));
 
