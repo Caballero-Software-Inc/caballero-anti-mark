@@ -149,7 +149,11 @@ app.use(
         origin: "*"
     })
 <<<<<<< HEAD
+<<<<<<< HEAD
 );
+=======
+)
+>>>>>>> parent of d7d3efc (Update server.js)
 
 =======
 )
