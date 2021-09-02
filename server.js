@@ -147,7 +147,7 @@ app.use(
     cors({
         origin: "*"
     })
-)
+);
 
 
 
