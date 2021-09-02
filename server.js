@@ -124,7 +124,7 @@ providers.find({}).exec(function (err, docs) {
 const app = express();
 
 
-const cors = require("cors");
+//const cors = require("cors");
 /* 
 (The MIT License)
 
@@ -143,11 +143,14 @@ included in all copies or substantial portions of the Software.
 */
 
 /* to fetch the api from every origin */
+/*
 app.use(
     cors({
         origin: "*"
     })
 )
+*/
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log('listening at ' + PORT));
