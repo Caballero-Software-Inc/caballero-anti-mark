@@ -153,13 +153,9 @@ app.use(
 
 
 
-<<<<<<< HEAD
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log('listening at ' + port));
 app.use(express.static('public'));
-=======
-//app.use(express.static('public'));
->>>>>>> parent of a3bdd5f (Update server.js)
 app.use(express.json({ limit: '5mb' }));
 
 
