@@ -143,13 +143,12 @@ included in all copies or substantial portions of the Software.
 */
 
 /* to fetch the api from every origin */
-/*
 app.use(
     cors({
         origin: "*"
     })
 )
-*/
+
 
 
 const PORT = process.env.PORT || 3000;
@@ -157,7 +156,7 @@ app.listen(PORT, () => console.log('listening at ' + PORT));
 
 app.disable('etag');//to guarantee that res.statusCode = 200, unless there is an error
 
-//app.use(express.static('public'));
+app.use(express.static('public'));
 app.use(express.json({ limit: '5mb' }));
 
 
