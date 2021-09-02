@@ -7,6 +7,16 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
   },
+<<<<<<< HEAD
+=======
+  "dependencies": {
+    "crypto": "^1.0.1",
+    "dotenv": "^10.0.0",
+    "express": "^4.17.1",
+    "nedb": "^1.8.0",
+    "nodemailer": "^6.6.3"
+  },
+>>>>>>> parent of 80e9b9a (restriction by location)
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Caballero-Software-Inc/caballero-anti-mark.git"
