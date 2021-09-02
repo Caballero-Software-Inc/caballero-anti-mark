@@ -1,11 +1,6 @@
 'use strict';
 
-let crypto;
-try {
-  crypto = require('crypto');
-} catch (err) {
-  console.log('crypto support is disabled!');
-}
+const crypto = require('crypto');
 /* License
 
 [The MIT License (MIT)](http://opensource.org/licenses/MIT)
@@ -25,7 +20,7 @@ all copies or substantial portions of the Software.
 */
 
 
-require('dotenv').config();
+const dotenv = require('dotenv');
 /*Copyright (c) 2015, Scott Motte
 All rights reserved.
 
@@ -41,7 +36,9 @@ modification, are permitted provided that the following conditions are met:
 
 */
 
-const recoveryTime = 86400000; // time from one recovery of code to another
+dotenv.config();
+
+const recoveryTime = 86400000; // time from one recovery of the identifier to another
 const lKey = 50;/* length of the key */
 
 
@@ -51,17 +48,14 @@ const appPassword = process.env.APPPASSWORD;
 
 // it is cryptographically secure
 function makeId(length) {
-    let result = '';
-    let characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let charactersLength = characters.length;
-    for (let i = 0; i < length; i++) {
-        result += characters.charAt( crypto.randomInt(charactersLength) );
-    }
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const charactersLength = characters.length;
+    const result = [...Array(length).keys()]
+        .map(value => characters.charAt(crypto.randomInt(charactersLength)))
+        .join('');
     return result;
 }
 
-
-let tempSeed = makeId(50); // initialization
 
 const express = require('express');
 /* 
@@ -84,7 +78,6 @@ included in all copies or substantial portions of the Software.
 
 const nodemailer = require("nodemailer");
 /*
-
 Copyright (c) 2011-2019 Andris Reinman
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
@@ -101,6 +94,7 @@ included in all copies or substantial portions of the Software.
 /* Chapter: before interaction */
 
 /* reading the information about the users from the providers */
+
 const Datastore = require('nedb');
 /* 
 Copyright (c) 2013 Louis Chatriot &lt;louis.chatriot@gmail.com&gt;
@@ -119,6 +113,7 @@ included in all copies or substantial portions of the Software.
 
 const providers = new Datastore({ filename: 'providers.txt', autoload: true });
 
+//read the data about the users
 let users = [];
 providers.find({}).exec(function (err, docs) {
     docs.forEach(function (d) {
@@ -131,6 +126,7 @@ const app = express();
 
 
 const cors = require("cors");
+const { setTokenSourceMapRange } = require('typescript');
 /* 
 (The MIT License)
 
@@ -148,25 +144,23 @@ The above copyright notice and this permission notice shall be
 included in all copies or substantial portions of the Software.
 */
 
+/* to fetch the api from every origin */
 app.use(
     cors({
         origin: "*"
     })
 )
 
-
-
-const port = process.env.PORT || 3000;
-app.listen(port, () => console.log('listening at ' + port));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log('listening at ' + PORT));
 
 app.disable('etag');//to guarantee that res.statusCode = 200, unless there is an error
 
-app.use(express.static('public'));
+//app.use(express.static('public'));
 app.use(express.json({ limit: '5mb' }));
 
 
 /* Chapter: new user */
-
 async function sendEmail(emailSubject, firstText, emailAddress, userIdentifier) {
 
     // create reusable transporter object using the default SMTP transport
@@ -195,31 +189,75 @@ async function sendEmail(emailSubject, firstText, emailAddress, userIdentifier) 
 
 // new account
 
-app.post('/newaccount', (request, response) => {
-    providers.find({ email: request.body.email }, function (err, docs) {
-        if (docs.length == 0) {
-            response.json({ ok: true });
-            request.body.identifier = makeId(lKey);
-            request.body.recovery = Date.now();
-            users.push(request.body);
-            autoSave();
 
-            switch (parseInt(request.body.language)) {
-                case 0:
-                    sendEmail("Identifier (Caballero Software Inc.)", "Your identifier for Caballero Software Inc. is: ", request.body.email, request.body.identifier);
-                    break;
-                case 1:
-                    sendEmail("Identifiant (Caballero Software Inc.)", "Votre identifiant pour Caballero Software Inc. est : ", request.body.email, request.body.identifier);
-                    break;
-                default:
-                    console.log('Problem in language data.');
-                    break;
-            };
-        } else {
-            response.json({ ok: false });
-        }
-    })
+/* Register the email and send the identifier to the user.
+
+Attack 1: Someone call the api using random email addresses to create spam.
+
+Solution 1: 
+- The client sends the request the email address and the time.
+- A nonce is sent to back to the client, one minute later. This nonce
+depends on the email address.
+- After the client receives the nonce, it sends it back to the server.
+- The server compare both nonces, if they are the same, then proceed to
+identify the client.
+*/
+
+//500 nonces
+let nonces = [...Array(500)].map(value => makeId(lKey));
+
+app.get('/nonceaccount', async (request, response) => {
+    await new Promise(resolve => setTimeout(resolve, 1000));//wait 1 second
+    response.json({ ok: true, nonce: nonces[0] });
 });
+
+app.get('/newaccount', async (request, response) => {
+
+    const userNonce = request.query.nonce;
+    const i = nonces.findIndex(value => value === userNonce);
+
+    if (i === -1) {
+        response.json({ ok: 2 })
+    } else {
+        nonces.splice(i, 1);
+        nonces.push(makeId(lKey));
+
+        const userEmail = request.query.email;
+        const userLang = parseInt(request.query.lang);
+        providers.find({ email: userEmail }, function (err, docs) {
+            const id = makeId(lKey);
+            if (docs.length == 0) {
+                const newUser = {
+                    identifier: id,
+                    email: userEmail,
+                    language: userLang,
+                    recovery: Date.now(),
+                    offers: []
+                };
+                users.push(newUser);
+                autoSave();
+
+                switch (userLang) {
+                    case 0:
+                        sendEmail("Identifier (Caballero Software Inc.)", "Your identifier for Caballero Software Inc. is: ", userEmail, id);
+                        break;
+                    case 1:
+                        sendEmail("Identifiant (Caballero Software Inc.)", "Votre identifiant pour Caballero Software Inc. est : ", userEmail, id);
+                        break;
+                    default:
+                        console.log('Problem in language data.');
+                        break;
+                };
+                response.json({ ok: 1 })
+            } else {
+                response.json({ ok: 0 })
+            }
+        });
+    }
+});
+
+
+
 
 app.post('/apiretrieveidentifier', (request, response) => {
 
