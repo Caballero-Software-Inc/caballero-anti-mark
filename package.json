@@ -1,31 +1,29 @@
 {
-  "name": "caballero-door",
+  "name": "caballero-anti-mark",
   "version": "1.0.0",
-  "description": "Service provided by Caballero Software Inc.",
+  "description": "A web application to avoid discrimination for any reason (especially the categories that are not prohibited by law and can be used to abuse a part of the population)",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
   },
-  "dependencies": {
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Caballero-Software-Inc/caballero-anti-mark.git"
+  },
+  "keywords": [],
+  "author": "José Manuel Rodríguez Caballero",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Caballero-Software-Inc/caballero-anti-mark/issues"
+  },
+  "homepage": "https://github.com/Caballero-Software-Inc/caballero-anti-mark#readme",
+  "devDependencies": {
     "cors": "^2.8.5",
     "crypto": "^1.0.1",
     "dotenv": "^10.0.0",
     "express": "^4.17.1",
-    "leaflet": "^1.7.1",
-    "leaflet-geometryutil": "^0.10.0",
     "nedb": "^1.8.0",
     "nodemailer": "^6.6.3"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Caballero-Software-Inc/caballero-door.git"
-  },
-  "author": "Jose Manuel Rodriguez Caballero",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/Caballero-Software-Inc/caballero-door/issues"
-  },
-  "homepage": "https://github.com/Caballero-Software-Inc/caballero-door#readme",
-  "devDependencies": {}
+  }
 }
