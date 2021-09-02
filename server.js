@@ -143,12 +143,18 @@ included in all copies or substantial portions of the Software.
 */
 
 /* to fetch the api from every origin */
+/*
 app.use(
     cors({
         origin: "*"
     })
+<<<<<<< HEAD
 );
 
+=======
+)
+*/
+>>>>>>> parent of a3bdd5f (Update server.js)
 
 
 
@@ -158,8 +164,12 @@ app.listen(port, () => console.log('listening at ' + port));
 =======
 app.disable('etag');//to guarantee that res.statusCode = 200, unless there is an error
 
+<<<<<<< HEAD
 >>>>>>> parent of 9db4b64 (back)
 app.use(express.static('public'));
+=======
+//app.use(express.static('public'));
+>>>>>>> parent of a3bdd5f (Update server.js)
 app.use(express.json({ limit: '5mb' }));
 
 
