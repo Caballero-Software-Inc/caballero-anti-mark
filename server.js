@@ -1,6 +1,6 @@
 'use strict';
 
-const cors = require("cors");
+//const cors = require("cors");
 /* 
 (The MIT License)
 
@@ -19,12 +19,13 @@ included in all copies or substantial portions of the Software.
 */
 
 /* to fetch the api from every origin */
+/*
 app.use(
     cors({
         origin: "*"
     })
 )
-
+*/
 
 
 const crypto = require('crypto');
