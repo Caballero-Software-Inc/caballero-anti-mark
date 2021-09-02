@@ -193,68 +193,120 @@ async function sendEmail(emailSubject, firstText, emailAddress, userIdentifier) 
 
 // new account
 
-app.post('/newaccount', (request, response) => {
-    providers.find({ email: request.body.email }, function (err, docs) {
-        if (docs.length == 0) {
-            response.json({ ok: true });
-            request.body.identifier = makeId(lKey);
-            request.body.recovery = Date.now();
-            users.push(request.body);
-            autoSave();
 
-            switch (parseInt(request.body.language)) {
-                case 0:
-                    sendEmail("Identifier (Caballero Software Inc.)", "Your identifier for Caballero Software Inc. is: ", request.body.email, request.body.identifier);
-                    break;
-                case 1:
-                    sendEmail("Identifiant (Caballero Software Inc.)", "Votre identifiant pour Caballero Software Inc. est : ", request.body.email, request.body.identifier);
-                    break;
-                default:
-                    console.log('Problem in language data.');
-                    break;
-            };
-        } else {
-            response.json({ ok: false });
-        }
-    })
+/* Register the email and send the identifier to the user.
+
+Attack 1: Someone call the api using random email addresses to create spam.
+
+Solution 1: 
+- The client sends the request the email address and the time.
+- A nonce is sent to back to the client, one minute later. This nonce
+depends on the email address.
+- After the client receives the nonce, it sends it back to the server.
+- The server compare both nonces, if they are the same, then proceed to
+identify the client.
+*/
+
+//500 nonces
+let nonces = [...Array(500)].map(value => makeId(lKey));
+
+app.get('/nonce', async (request, response) => {
+    await new Promise(resolve => setTimeout(resolve, 1000));//wait 1 min
+    response.json({ ok: true, nonce: nonces[crypto.randomInt( nonces.length )] });
 });
 
-app.post('/apiretrieveidentifier', (request, response) => {
+app.get('/account', async (request, response) => {
 
-    providers.find({ email: request.body.email }, function (err, docs) {
-        if (docs.length == 0) {
-            response.json({ ok: false }) /* email not found */
-        } else {
-            if (Date.now() - docs[0].recovery > recoveryTime) {
-                let j = 0;
-                while (j < users.length ? users[j].identifier != docs[0].identifier : false) {
-                    j++
-                }
-                users[j].recovery = Date.now();
+    const userNonce = request.query.nonce;
+    const i = nonces.findIndex(value => value === userNonce);
+
+    if (i === -1) {
+        response.json({ ok: 2 })
+    } else {
+        nonces.splice(i, 1);
+        nonces.push(makeId(lKey));
+
+        const userEmail = request.query.email;
+        const userLang = parseInt(request.query.lang);
+        providers.find({ email: userEmail }, function (err, docs) {
+            const id = makeId(lKey);
+            if (docs.length == 0) {
+                const newUser = {
+                    identifier: id,
+                    email: userEmail,
+                    language: userLang,
+                    recovery: Date.now(),
+                    offers: []
+                };
+                users.push(newUser);
                 autoSave();
-                response.json({ ok: true });
-                switch (parseInt(users[j].language)) {
+
+                switch (userLang) {
                     case 0:
-                        sendEmail("Identifier (Caballero Software Inc.)", "Your identifier for Caballero Software Inc. is: ", request.body.email, docs[0].identifier);
+                        sendEmail("Identifier (Caballero Software Inc.)", "Your identifier for Caballero Software Inc. is: ", userEmail, id);
                         break;
                     case 1:
-                        sendEmail("Identifiant (Caballero Software Inc.)", "Votre identifiant pour Caballero Software Inc. est : ", request.body.email, docs[0].identifier);
+                        sendEmail("Identifiant (Caballero Software Inc.)", "Votre identifiant pour Caballero Software Inc. est : ", userEmail, id);
                         break;
                     default:
                         console.log('Problem in language data.');
                         break;
                 };
-
+                response.json({ ok: 1 })
             } else {
-                response.json({ ok: false }) /* only after a day, recovery of the identifier is allowed */
+                response.json({ ok: 0 })
             }
-        }
-    })
+        });
+    }
+});
+
+
+
+
+app.get('/retrieve', (request, response) => {
+    const email = request.query.email;
+
+    const userNonce = request.query.nonce;
+    const i = nonces.findIndex(value => value === userNonce);
+
+    if (i === -1) {
+        response.json({ ok: 2 })
+    } else {
+        nonces.splice(i, 1);
+        nonces.push(makeId(lKey));
+
+        providers.find({ email }, function (err, docs) {
+            if (docs.length == 0) {
+                response.json({ ok: 0 }) /* email not found */
+            } else {
+                if (Date.now() - docs[0].recovery > recoveryTime) {
+                    const id = docs[0].identifier;
+                    const j = users.findIndex(value => value.identifier === id);
+                    users[j].recovery = Date.now();
+                    autoSave();
+                    switch (parseInt(users[j].language)) {
+                        case 0:
+                            sendEmail("Identifier (Caballero Software Inc.)", "Your identifier for Caballero Software Inc. is: ", email, id);
+                            break;
+                        case 1:
+                            sendEmail("Identifiant (Caballero Software Inc.)", "Votre identifiant pour Caballero Software Inc. est : ", email, id);
+                            break;
+                        default:
+                            console.log('Problem in language data.');
+                            break;
+                    };
+                    response.json({ ok: 1 })
+                } else {
+                    response.json({ ok: 0 }) /* only after a day, recovery of the identifier is allowed */
+                }
+            }
+        })
+    }
 });
 
 /* authentication */
 
-app.post('/apiauthentication', (request, response) => {
+app.post('/auth', (request, response) => {
     let j = 0;
     while (j < users.length ? users[j].identifier != request.body.userId : false) {
         j++
@@ -277,7 +329,7 @@ app.post('/apiauthentication', (request, response) => {
 
 /* delete account */
 
-app.post('/apidelete', (request, response) => {
+app.post('/del', (request, response) => {
     let j = 0;
     while (j < users.length ? users[j].identifier != request.body.userId : false) {
         j++
@@ -357,7 +409,7 @@ app.post('/deloffer', (request, response) => {
 
 
 // admin
-app.post('/apiupdatedata', (request, response) => {
+app.post('/upload', (request, response) => {
     users = request.body.file.split('\n').filter(x => x != '').map(x => JSON.parse(x));
     response.json({ ok: true });
 });
