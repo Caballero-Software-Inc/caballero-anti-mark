@@ -1,5 +1,9 @@
 'use strict';
 
+const recoveryTime = 86400000; // time from one recovery of the identifier to another
+const lKey = 50;/* length of the key */
+
+
 const crypto = require('crypto');
 /* License
 
@@ -37,11 +41,6 @@ modification, are permitted provided that the following conditions are met:
 */
 
 dotenv.config();
-
-const recoveryTime = 86400000; // time from one recovery of the identifier to another
-const lKey = 50;/* length of the key */
-
-
 
 const appLogin = 'caballerosoftwareinc@gmail.com';
 const appPassword = process.env.APPPASSWORD;
@@ -206,12 +205,12 @@ identify the client.
 //500 nonces
 let nonces = [...Array(500)].map(value => makeId(lKey));
 
-app.get('/nonceaccount', async (request, response) => {
-    await new Promise(resolve => setTimeout(resolve, 1000));//wait 1 second
-    response.json({ ok: true, nonce: nonces[0] });
+app.get('/nonce', async (request, response) => {
+    await new Promise(resolve => setTimeout(resolve, 1000));//wait 1 min
+    response.json({ ok: true, nonce: nonces[crypto.randomInt( nonces.length )] });
 });
 
-app.get('/newaccount', async (request, response) => {
+app.get('/account', async (request, response) => {
 
     const userNonce = request.query.nonce;
     const i = nonces.findIndex(value => value === userNonce);
@@ -259,42 +258,50 @@ app.get('/newaccount', async (request, response) => {
 
 
 
-app.post('/apiretrieveidentifier', (request, response) => {
+app.get('/retrieve', (request, response) => {
+    const email = request.query.email;
 
-    providers.find({ email: request.body.email }, function (err, docs) {
-        if (docs.length == 0) {
-            response.json({ ok: false }) /* email not found */
-        } else {
-            if (Date.now() - docs[0].recovery > recoveryTime) {
-                let j = 0;
-                while (j < users.length ? users[j].identifier != docs[0].identifier : false) {
-                    j++
-                }
-                users[j].recovery = Date.now();
-                autoSave();
-                response.json({ ok: true });
-                switch (parseInt(users[j].language)) {
-                    case 0:
-                        sendEmail("Identifier (Caballero Software Inc.)", "Your identifier for Caballero Software Inc. is: ", request.body.email, docs[0].identifier);
-                        break;
-                    case 1:
-                        sendEmail("Identifiant (Caballero Software Inc.)", "Votre identifiant pour Caballero Software Inc. est : ", request.body.email, docs[0].identifier);
-                        break;
-                    default:
-                        console.log('Problem in language data.');
-                        break;
-                };
+    const userNonce = request.query.nonce;
+    const i = nonces.findIndex(value => value === userNonce);
 
+    if (i === -1) {
+        response.json({ ok: 2 })
+    } else {
+        nonces.splice(i, 1);
+        nonces.push(makeId(lKey));
+
+        providers.find({ email }, function (err, docs) {
+            if (docs.length == 0) {
+                response.json({ ok: 0 }) /* email not found */
             } else {
-                response.json({ ok: false }) /* only after a day, recovery of the identifier is allowed */
+                if (Date.now() - docs[0].recovery > recoveryTime) {
+                    const id = docs[0].identifier;
+                    const j = users.findIndex(value => value.identifier === id);
+                    users[j].recovery = Date.now();
+                    autoSave();
+                    switch (parseInt(users[j].language)) {
+                        case 0:
+                            sendEmail("Identifier (Caballero Software Inc.)", "Your identifier for Caballero Software Inc. is: ", email, id);
+                            break;
+                        case 1:
+                            sendEmail("Identifiant (Caballero Software Inc.)", "Votre identifiant pour Caballero Software Inc. est : ", email, id);
+                            break;
+                        default:
+                            console.log('Problem in language data.');
+                            break;
+                    };
+                    response.json({ ok: 1 })
+                } else {
+                    response.json({ ok: 0 }) /* only after a day, recovery of the identifier is allowed */
+                }
             }
-        }
-    })
+        })
+    }
 });
 
 /* authentication */
 
-app.post('/apiauthentication', (request, response) => {
+app.post('/auth', (request, response) => {
     let j = 0;
     while (j < users.length ? users[j].identifier != request.body.userId : false) {
         j++
@@ -317,7 +324,7 @@ app.post('/apiauthentication', (request, response) => {
 
 /* delete account */
 
-app.post('/apidelete', (request, response) => {
+app.post('/del', (request, response) => {
     let j = 0;
     while (j < users.length ? users[j].identifier != request.body.userId : false) {
         j++
@@ -397,7 +404,7 @@ app.post('/deloffer', (request, response) => {
 
 
 // admin
-app.post('/apiupdatedata', (request, response) => {
+app.post('/upload', (request, response) => {
     users = request.body.file.split('\n').filter(x => x != '').map(x => JSON.parse(x));
     response.json({ ok: true });
 });
