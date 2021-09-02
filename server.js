@@ -127,14 +127,6 @@ providers.find({}).exec(function (err, docs) {
 
 /* creating app */
 const app = express();
-const port = process.env.PORT || 3000;
-app.listen(port, () => console.log('listening at ' + port));
-
-app.disable('etag');//to guarantee that res.statusCode = 200, unless there is an error
-
-app.use(express.static('public'));
-app.use(express.json({ limit: '5mb' }));
-
 
 const cors = require("cors");
 /* 
@@ -160,6 +152,16 @@ app.use(
         origin: "*"
     })
 );
+
+const port = process.env.PORT || 3000;
+app.listen(port, () => console.log('listening at ' + port));
+
+app.disable('etag');//to guarantee that res.statusCode = 200, unless there is an error
+
+app.use(express.static('public'));
+app.use(express.json({ limit: '5mb' }));
+
+
 
 /* Chapter: new user */
 
