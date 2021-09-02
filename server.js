@@ -1,11 +1,6 @@
 'use strict';
 
-let crypto;
-try {
-  crypto = require('crypto');
-} catch (err) {
-  console.log('crypto support is disabled!');
-}
+const crypto = require('crypto');
 /* License
 
 [The MIT License (MIT)](http://opensource.org/licenses/MIT)
@@ -25,7 +20,7 @@ all copies or substantial portions of the Software.
 */
 
 
-require('dotenv').config();
+const dotenv = require('dotenv');
 /*Copyright (c) 2015, Scott Motte
 All rights reserved.
 
@@ -40,6 +35,9 @@ modification, are permitted provided that the following conditions are met:
   and/or other materials provided with the distribution.
 
 */
+
+dotenv.config();
+
 
 const recoveryTime = 86400000; // time from one recovery of code to another
 const lKey = 50;/* length of the key */
