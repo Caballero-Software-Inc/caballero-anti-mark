@@ -122,7 +122,6 @@ providers.find({}).exec(function (err, docs) {
 
 /* creating app */
 const app = express();
-<<<<<<< HEAD
 
 
 //const cors = require("cors");
@@ -152,15 +151,9 @@ app.use(
 
 
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log('listening at ' + PORT));
 
-app.disable('etag');//to guarantee that res.statusCode = 200, unless there is an error
-
-=======
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log('listening at ' + port));
->>>>>>> parent of 80e9b9a (restriction by location)
 app.use(express.static('public'));
 app.use(express.json({ limit: '5mb' }));
 
