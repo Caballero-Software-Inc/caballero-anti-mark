@@ -1,5 +1,7 @@
 'use strict';
 
+const cors = require("cors");
+
 let crypto;
 try {
   crypto = require('crypto');
