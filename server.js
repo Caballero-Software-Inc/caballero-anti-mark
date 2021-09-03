@@ -49,13 +49,12 @@ const appLogin = 'caballerosoftwareinc@gmail.com';
 const appPassword = process.env.APPPASSWORD;
 
 // it is cryptographically secure
-function makeId(length) {
-    let result = '';
-    let characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let charactersLength = characters.length;
-    for (let i = 0; i < length; i++) {
-        result += characters.charAt( crypto.randomInt(charactersLength) );
-    }
+function makeId(length) {    
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const charactersLength = characters.length;
+    const result = [...Array(charactersLength)]
+        .map(value => characters.charAt( crypto.randomInt(charactersLength) ))
+        .join('');
     return result;
 }
 
@@ -304,25 +303,25 @@ app.get('/retrieve', (request, response) => {
     }
 });
 
+
 /* authentication */
+app.get('/auth', (request, response) => {
+    const id = request.query.id;
+    const email = request.query.email;
 
-app.post('/auth', (request, response) => {
-    let j = 0;
-    while (j < users.length ? users[j].identifier != request.body.userId : false) {
-        j++
-    };
-    if (j == users.length) {
-        response.json({ ok: false }) /* the identifier provided by the user was not found */
+    const j = users.findIndex(value => value.identifier === id);
+
+    if (j === -1) {
+        response.json({ ok: false }) 
     } else {
-        if (users[j].email == request.body.email) {
+        if (users[j].email == email) {
             if (users[j].email == "caballero@caballero.software") {
-                response.json({ ok: true, providers: users }) /* the identifier provided by the user was found */
+                response.json({ ok: true, providers: users }) 
             } else {
-                response.json({ ok: true, new: (users[j].minor == undefined) }) /* the identifier provided by the user was found */
+                response.json({ ok: true }) 
             }
-
         } else {
-            response.json({ ok: false }) /* the identifier provided by the user was not found */
+            response.json({ ok: false }) 
         }
     }
 });
