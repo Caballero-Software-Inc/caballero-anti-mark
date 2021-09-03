@@ -49,11 +49,11 @@ const appLogin = 'caballerosoftwareinc@gmail.com';
 const appPassword = process.env.APPPASSWORD;
 
 // it is cryptographically secure
-function makeId(length) {    
+function makeId(length) {
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     const charactersLength = characters.length;
     const result = [...Array(charactersLength)]
-        .map(value => characters.charAt( crypto.randomInt(charactersLength) ))
+        .map(value => characters.charAt(crypto.randomInt(charactersLength)))
         .join('');
     return result;
 }
@@ -211,7 +211,7 @@ let nonces = [...Array(500)].map(value => makeId(lKey));
 
 app.get('/nonce', async (request, response) => {
     await new Promise(resolve => setTimeout(resolve, 1000));//wait 1 min
-    response.json({ ok: true, nonce: nonces[crypto.randomInt( nonces.length )] });
+    response.json({ ok: true, nonce: nonces[crypto.randomInt(nonces.length)] });
 });
 
 app.get('/account', async (request, response) => {
@@ -312,16 +312,16 @@ app.get('/auth', (request, response) => {
     const j = users.findIndex(value => value.identifier === id);
 
     if (j === -1) {
-        response.json({ ok: false }) 
+        response.json({ ok: false })
     } else {
         if (users[j].email == email) {
             if (users[j].email == "caballero@caballero.software") {
-                response.json({ ok: true, providers: users }) 
+                response.json({ ok: true, providers: users })
             } else {
-                response.json({ ok: true }) 
+                response.json({ ok: true })
             }
         } else {
-            response.json({ ok: false }) 
+            response.json({ ok: false })
         }
     }
 });
@@ -329,15 +329,16 @@ app.get('/auth', (request, response) => {
 /* delete account */
 
 app.post('/del', (request, response) => {
-    let j = 0;
-    while (j < users.length ? users[j].identifier != request.body.userId : false) {
-        j++
-    };
+    const id = request.body.userId;
+    const j = users.findIndex(value => value.identifier === id);
+    const email = request.body.userEmail;
 
-    if (users[j].email == request.body.userEmail) {
+    if (users[j].email == email) {
         users.splice(j, 1);
         response.json({ ok: true });
         autoSave();
+    } else {
+        response.json({ ok: false });
     }
 });
 
@@ -354,56 +355,69 @@ function autoSave() {
 
 
 // offers
-
 app.post('/newoffer', (request, response) => {
-    let j = 0;
-    while (j < users.length ? users[j].email != request.body.userEmail : false) {
-        j++
-    };
+    const id = request.body.userId;
+    const email = request.body.userEmail;
+    const j = users.findIndex(value => value.email === email);
 
-    users[j].offers.push(request.body.newOffer);
-    autoSave();
+    if (users[j].identifier === id) {
+        users[j].offers.push(request.body.newOffer);
+        autoSave();
+        response.json({ ok: true });
+    } else {
+        response.json({ ok: false });
+    }
 });
 
 
 
 app.get('/seealloffers', (request, response) => {
-    let offers = [];
-    let nearOffers;
     const point1 = { lat: parseFloat(request.query.lat), lon: parseFloat(request.query.lon) };
     const dist = parseFloat(request.query.dist);
-    for (let j = 0; j < users.length; j++) {
-        nearOffers = users[j].offers.filter(offer => {
+    
+    const offers = users.map(value => 
+        value.offers.filter(offer => {
             const point2 = offer.location;
             if (distance(point1, point2) <= dist) {
                 return true
             } else {
                 return false
             }
-        });
-        offers = offers.concat(nearOffers);
-    };
+        })
+    ).flat();
+    
     response.json({ ok: true, offers });
 });
 
 
 
 app.post('/seeoffers', (request, response) => {
-    let j = 0;
-    while (j < users.length ? users[j].email != request.body.userEmail : false) {
-        j++
-    };
-    response.json({ ok: true, offers: users[j].offers });
+    const email = request.body.userEmail;
+    const id = request.body.userId;
+
+    const j = users.findIndex(value => value.identifier === id);
+
+    if (users[j].email === email) {
+        response.json({ ok: true, offers: users[j].offers });
+    } else {
+        response.json({ ok: false });
+    }
 });
 
 app.post('/deloffer', (request, response) => {
-    let j = 0;
-    while (j < users.length ? users[j].email != request.body.userEmail : false) {
-        j++
-    };
-    users[j].offers.splice(request.body.index, 1);
-    autoSave();
-    response.json({ ok: true, offers: users[j].offers });
+    const email = request.body.userEmail;
+    const id = request.body.userId;
+    const index = request.body.index;
+
+    const j = users.findIndex(value => value.identifier === id);
+
+    if (users[j].email === email) {
+        users[j].offers.splice(index, 1);
+        response.json({ ok: true });
+        autoSave();
+    } else {
+        response.json({ ok: false });
+    } 
 });
 
 
