@@ -148,7 +148,7 @@ const createCsvWriter = writeCsv.createObjectCsvWriter;
 let users = [];
 let offers = [];
 
-fs.readFile('userdb.csv', async (err, data) => {
+fs.readFile('userdb.js', async (err, data) => {
     users = await neatCsv(data);
     users = users.map(value => {
         value.recovery = parseInt(value.recovery);
@@ -156,7 +156,7 @@ fs.readFile('userdb.csv', async (err, data) => {
     });
 });
 
-fs.readFile('offerdb.csv', async (err, data) => {
+fs.readFile('offerdb.js', async (err, data) => {
     offers = await neatCsv(data);
     offers = offers.map(offer => {
         offer.lat = parseFloat(offer.lat);
@@ -286,7 +286,7 @@ app.get('/account', async (request, response) => {
                 recovery: Date.now()
             };
             users.push(newUser);
-            save('userdb.csv',
+            save('userdb.js',
                 [
                     { id: 'email', title: 'email' },
                     { id: 'id', title: 'id' },
@@ -331,7 +331,7 @@ app.get('/retrieve', (request, response) => {
             if (Date.now() - users[j].recovery > recoveryTime) {
                 const id = users[j].id;
                 users[j].recovery = Date.now();
-                save('userdb.csv',
+                save('userdb.js',
                     [
                         { id: 'email', title: 'email' },
                         { id: 'id', title: 'id' },
@@ -389,7 +389,7 @@ app.post('/del', (request, response) => {
         users.splice(j, 1);
         response.json({ ok: true });
         // del user
-        save('userdb.csv',
+        save('userdb.js',
             [
                 { id: 'email', title: 'email' },
                 { id: 'id', title: 'id' },
@@ -398,7 +398,7 @@ app.post('/del', (request, response) => {
 
         //del offer
         offers = offers.filter(offer => offer.email != email);
-        save('offerdb.csv',
+        save('offerdb.js',
             [
                 { id: 'email', title: 'email' },
                 { id: 'kind', title: 'kind' },
@@ -425,7 +425,7 @@ app.post('/newoffer', (request, response) => {
         let newOffer = request.body.newOffer;
         newOffer.email = email;
         offers.push(newOffer);
-        save('offerdb.csv',
+        save('offerdb.js',
             [
                 { id: 'email', title: 'email' },
                 { id: 'kind', title: 'kind' },
@@ -513,7 +513,7 @@ app.post('/deloffer', (request, response) => {
         });
         response.json({ ok: true });
 
-        save('offerdb.csv',
+        save('offerdb.js',
             [
                 { id: 'email', title: 'email' },
                 { id: 'kind', title: 'kind' },
