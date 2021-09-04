@@ -1,5 +1,20 @@
 'use strict';
+/*
+Node.js is licensed for use as follows:
 
+"""
+Copyright Node.js contributors. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to
+deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+*/
 
 const crypto = require('crypto');
 /* License
@@ -40,7 +55,7 @@ modification, are permitted provided that the following conditions are met:
 dotenv.config();
 
 
-const recoveryTime = 86400000; // time from one recovery of code to another
+const recoveryTime = 10 //86400000; // time from one recovery of code to another
 const lKey = 50;/* length of the key */
 
 
@@ -99,32 +114,92 @@ included in all copies or substantial portions of the Software.
 /* Chapter: before interaction */
 
 /* reading the information about the users from the providers */
-const Datastore = require('nedb');
-/* 
-Copyright (c) 2013 Louis Chatriot &lt;louis.chatriot@gmail.com&gt;
+const fs = require('fs');
+const neatCsv = require('neat-csv');
+/*
+MIT License
 
-Permission is hereby granted, free of charge, to any person obtaining
-a copy of this software and associated documentation files (the
-'Software'), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
+Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)
 
-The above copyright notice and this permission notice shall be
-included in all copies or substantial portions of the Software.
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 */
 
-const providers = new Datastore({ filename: 'providers.txt', autoload: true });
+const writeCsv = require('csv-writer');
+/*   
+MIT License
 
-let users = [];
+Copyright (c) 2020 Ryuichi Inagaki
 
-//read the data
-providers.find({}).exec(function (err, docs) {
-    docs.forEach(function (d) {
-        users.push(d)
-    })
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+*/
+
+const createCsvWriter = writeCsv.createObjectCsvWriter;
+
+let users;
+let offers;
+
+fs.readFile('userdb.csv', async (err, data) => {
+    if (err) {
+        const csvWriter = createCsvWriter({
+            path: 'userdb.csv',
+            header: [
+                        { id: 'email', title: 'email' },
+                        { id: 'id', title: 'id' },
+                        { id: 'recovery', title: 'recovery' }
+                    ]
+        });
+        users = [];
+        return
+    }
+    users = await neatCsv(data);
+    users = users.map(value => {
+        value.recovery = parseInt(value.recovery);
+        return value
+    });
 });
+
+fs.readFile('offerdb.csv', async (err, data) => {
+    if (err) {
+        const csvWriter = createCsvWriter({
+            path: 'offerdb.csv',
+            header: [
+                        { id: 'email', title: 'email' },
+                        { id: 'kind', title: 'kind' },
+                        { id: 'web', title: 'web' },
+                        { id: 'lat', title: 'lat' },
+                        { id: 'lon', title: 'lon' },
+                        { id: 'description', title: 'description' }
+                    ]
+        })
+        offers = [];
+        return
+    }
+    offers = await neatCsv(data);
+    offers = offers.map(offer => {
+        offer.lat = parseFloat(offer.lat);
+        offer.lon = parseFloat(offer.lon);
+        return offer
+    });
+});
+
+
+function save(path, header, data) {
+    const csvWriter = createCsvWriter({ path, header });
+    csvWriter
+        .writeRecords(data)
+        .then(() => console.log('Saved'));
+}
+
 
 /* creating app */
 const app = express();
@@ -229,18 +304,21 @@ app.get('/account', async (request, response) => {
 
         const userEmail = request.query.email;
         const userLang = parseInt(request.query.lang);
-        const i = users.findIndex(value => value.email === userEmail);
-        if (i === -1) {
+        const j = users.findIndex(value => value.email === userEmail);
+        if (j === -1) {
             const id = makeId(lKey);
             const newUser = {
-                identifier: id,
                 email: userEmail,
-                language: userLang,
-                recovery: Date.now(),
-                offers: []
+                id: id,
+                recovery: Date.now()
             };
             users.push(newUser);
-            autoSave();
+            save('userdb.csv',
+                [
+                    { id: 'email', title: 'email' },
+                    { id: 'id', title: 'id' },
+                    { id: 'recovery', title: 'recovery' }
+                ], users);
 
             switch (userLang) {
                 case 0:
@@ -260,12 +338,9 @@ app.get('/account', async (request, response) => {
     }
 });
 
-
-
-
 app.get('/retrieve', (request, response) => {
     const email = request.query.email;
-
+    const userLang = parseInt(request.query.lang);
     const userNonce = request.query.nonce;
     const i = nonces.findIndex(value => value === userNonce);
 
@@ -275,18 +350,21 @@ app.get('/retrieve', (request, response) => {
         nonces.splice(i, 1);
         nonces.push(makeId(lKey));
 
-
-        const j = users.findIndex(value => value.email === userEmail);
+        const j = users.findIndex(value => value.email === email);
 
         if (j === -1) {
             response.json({ ok: 0 }) /* email not found */
         } else {
-            if (Date.now() - docs[0].recovery > recoveryTime) {
-                const id = docs[0].identifier;
-                const j = users.findIndex(value => value.identifier === id);
+            if (Date.now() - users[j].recovery > recoveryTime) {
+                const id = users[j].id;
                 users[j].recovery = Date.now();
-                autoSave();
-                switch (parseInt(users[j].language)) {
+                save('userdb.csv',
+                    [
+                        { id: 'email', title: 'email' },
+                        { id: 'id', title: 'id' },
+                        { id: 'recovery', title: 'recovery' }
+                    ], users);
+                switch (userLang) {
                     case 0:
                         sendEmail("Identifier (Caballero Software Inc.)", "Your identifier for Caballero Software Inc. is: ", email, id);
                         break;
@@ -311,7 +389,7 @@ app.get('/auth', (request, response) => {
     const id = request.query.id;
     const email = request.query.email;
 
-    const j = users.findIndex(value => value.identifier === id);
+    const j = users.findIndex(value => value.id === id);
 
     if (j === -1) {
         response.json({ ok: false })
@@ -329,31 +407,38 @@ app.get('/auth', (request, response) => {
 });
 
 /* delete account */
-
 app.post('/del', (request, response) => {
     const id = request.body.userId;
-    const j = users.findIndex(value => value.identifier === id);
+    const j = users.findIndex(value => value.id === id);
     const email = request.body.userEmail;
 
     if (users[j].email == email) {
         users.splice(j, 1);
         response.json({ ok: true });
-        autoSave();
+        // del user
+        save('userdb.csv',
+            [
+                { id: 'email', title: 'email' },
+                { id: 'id', title: 'id' },
+                { id: 'recovery', title: 'recovery' }
+            ], users);
+
+        //del offer
+        offers = offers.filter(offer => offer.email != email);
+        save('offerdb.csv',
+            [
+                { id: 'email', title: 'email' },
+                { id: 'kind', title: 'kind' },
+                { id: 'web', title: 'web' },
+                { id: 'lat', title: 'lat' },
+                { id: 'lon', title: 'lon' },
+                { id: 'description', title: 'description' }
+            ], offers);
+
     } else {
         response.json({ ok: false });
     }
 });
-
-
-
-/* Chapter: save in the dababase */
-
-function autoSave() {
-    providers.remove({}, { multi: true }, (err, n) => { });
-    providers.loadDatabase();
-    providers.insert(users);
-    console.log("Update of providers, Date.now() = " + Date.now() + ".")
-}
 
 
 // offers
@@ -362,9 +447,20 @@ app.post('/newoffer', (request, response) => {
     const email = request.body.userEmail;
     const j = users.findIndex(value => value.email === email);
 
-    if (users[j].identifier === id) {
-        users[j].offers.push(request.body.newOffer);
-        autoSave();
+
+    if (users[j].id === id) {
+        let newOffer = request.body.newOffer;
+        newOffer.email = email;
+        offers.push(newOffer);
+        save('offerdb.csv',
+            [
+                { id: 'email', title: 'email' },
+                { id: 'kind', title: 'kind' },
+                { id: 'web', title: 'web' },
+                { id: 'lat', title: 'lat' },
+                { id: 'lon', title: 'lon' },
+                { id: 'description', title: 'description' }
+            ], offers);
         response.json({ ok: true });
     } else {
         response.json({ ok: false });
@@ -376,31 +472,51 @@ app.post('/newoffer', (request, response) => {
 app.get('/seealloffers', (request, response) => {
     const point1 = { lat: parseFloat(request.query.lat), lon: parseFloat(request.query.lon) };
     const dist = parseFloat(request.query.dist);
-
-    const offers = users.map(value =>
-        value.offers.filter(offer => {
-            const point2 = offer.location;
-            if (distance(point1, point2) <= dist) {
-                return true
-            } else {
-                return false
+    const nearOffers = offers.filter(offer => {
+        const point2 = { lat: offer.lat, lon: offer.lon };
+        if (distance(point1, point2) <= dist) {
+            return true
+        } else {
+            return false
+        }
+    }).flat()
+        .map(offer => {
+            const noemail = {
+                kind: offer.kind,
+                web: offer.web,
+                lat: offer.lat,
+                lon: offer.lon,
+                description: offer.description
             }
-        })
-    ).flat();
-
-    response.json({ ok: true, offers });
+            return noemail
+        });
+    response.json({ ok: true, offers: nearOffers });
 });
 
-
+function withoutEmail(offer) {
+    const noEmail = {
+        kind: offer.kind,
+        web: offer.web,
+        lat: offer.lat,
+        lon: offer.lon,
+        description: offer.description
+    };
+    return noEmail
+}
 
 app.post('/seeoffers', (request, response) => {
     const email = request.body.userEmail;
     const id = request.body.userId;
 
-    const j = users.findIndex(value => value.identifier === id);
+    const j = users.findIndex(value => value.id === id);
 
     if (users[j].email === email) {
-        response.json({ ok: true, offers: users[j].offers });
+        let myOffers = offers.filter(offer => {
+            return offer.email === email
+        }).map(offer => {
+            return withoutEmail(offer)
+        });
+        response.json({ ok: true, offers: myOffers });
     } else {
         response.json({ ok: false });
     }
@@ -409,14 +525,30 @@ app.post('/seeoffers', (request, response) => {
 app.post('/deloffer', (request, response) => {
     const email = request.body.userEmail;
     const id = request.body.userId;
-    const index = request.body.index;
+    const str = JSON.stringify(request.body.str);
 
-    const j = users.findIndex(value => value.identifier === id);
+    const j = users.findIndex(value => value.id === id);
 
     if (users[j].email === email) {
-        users[j].offers.splice(index, 1);
+
+        offers = offers.filter(offer => {
+            const b = (JSON.stringify(withoutEmail(offer)) != str);
+            console.log(str);
+            console.log(JSON.stringify(withoutEmail(offer)));
+            console.log(b);
+            return b
+        });
         response.json({ ok: true });
-        autoSave();
+
+        save('offerdb.csv',
+            [
+                { id: 'email', title: 'email' },
+                { id: 'kind', title: 'kind' },
+                { id: 'web', title: 'web' },
+                { id: 'lat', title: 'lat' },
+                { id: 'lon', title: 'lon' },
+                { id: 'description', title: 'description' }
+            ], offers);
     } else {
         response.json({ ok: false });
     }

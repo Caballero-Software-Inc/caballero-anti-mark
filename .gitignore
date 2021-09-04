@@ -105,4 +105,5 @@ dist
 
 # database
 providers.txt
-
+userdb.csv
+offerdb.csv
