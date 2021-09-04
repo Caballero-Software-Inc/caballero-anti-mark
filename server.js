@@ -118,6 +118,8 @@ included in all copies or substantial portions of the Software.
 const providers = new Datastore({ filename: 'providers.txt', autoload: true });
 
 let users = [];
+
+//read the data
 providers.find({}).exec(function (err, docs) {
     docs.forEach(function (d) {
         users.push(d)
@@ -227,35 +229,34 @@ app.get('/account', async (request, response) => {
 
         const userEmail = request.query.email;
         const userLang = parseInt(request.query.lang);
-        providers.find({ email: userEmail }, function (err, docs) {
+        const i = users.findIndex(value => value.email === userEmail);
+        if (i === -1) {
             const id = makeId(lKey);
-            if (docs.length == 0) {
-                const newUser = {
-                    identifier: id,
-                    email: userEmail,
-                    language: userLang,
-                    recovery: Date.now(),
-                    offers: []
-                };
-                users.push(newUser);
-                autoSave();
+            const newUser = {
+                identifier: id,
+                email: userEmail,
+                language: userLang,
+                recovery: Date.now(),
+                offers: []
+            };
+            users.push(newUser);
+            autoSave();
 
-                switch (userLang) {
-                    case 0:
-                        sendEmail("Identifier (Caballero Software Inc.)", "Your identifier for Caballero Software Inc. is: ", userEmail, id);
-                        break;
-                    case 1:
-                        sendEmail("Identifiant (Caballero Software Inc.)", "Votre identifiant pour Caballero Software Inc. est : ", userEmail, id);
-                        break;
-                    default:
-                        console.log('Problem in language data.');
-                        break;
-                };
-                response.json({ ok: 1 })
-            } else {
-                response.json({ ok: 0 })
-            }
-        });
+            switch (userLang) {
+                case 0:
+                    sendEmail("Identifier (Caballero Software Inc.)", "Your identifier for Caballero Software Inc. is: ", userEmail, id);
+                    break;
+                case 1:
+                    sendEmail("Identifiant (Caballero Software Inc.)", "Votre identifiant pour Caballero Software Inc. est : ", userEmail, id);
+                    break;
+                default:
+                    console.log('Problem in language data.');
+                    break;
+            };
+            response.json({ ok: 1 })
+        } else {
+            response.json({ ok: 0 })
+        }
     }
 });
 
@@ -274,32 +275,33 @@ app.get('/retrieve', (request, response) => {
         nonces.splice(i, 1);
         nonces.push(makeId(lKey));
 
-        providers.find({ email }, function (err, docs) {
-            if (docs.length == 0) {
-                response.json({ ok: 0 }) /* email not found */
+
+        const j = users.findIndex(value => value.email === userEmail);
+
+        if (j === -1) {
+            response.json({ ok: 0 }) /* email not found */
+        } else {
+            if (Date.now() - docs[0].recovery > recoveryTime) {
+                const id = docs[0].identifier;
+                const j = users.findIndex(value => value.identifier === id);
+                users[j].recovery = Date.now();
+                autoSave();
+                switch (parseInt(users[j].language)) {
+                    case 0:
+                        sendEmail("Identifier (Caballero Software Inc.)", "Your identifier for Caballero Software Inc. is: ", email, id);
+                        break;
+                    case 1:
+                        sendEmail("Identifiant (Caballero Software Inc.)", "Votre identifiant pour Caballero Software Inc. est : ", email, id);
+                        break;
+                    default:
+                        console.log('Problem in language data.');
+                        break;
+                };
+                response.json({ ok: 1 })
             } else {
-                if (Date.now() - docs[0].recovery > recoveryTime) {
-                    const id = docs[0].identifier;
-                    const j = users.findIndex(value => value.identifier === id);
-                    users[j].recovery = Date.now();
-                    autoSave();
-                    switch (parseInt(users[j].language)) {
-                        case 0:
-                            sendEmail("Identifier (Caballero Software Inc.)", "Your identifier for Caballero Software Inc. is: ", email, id);
-                            break;
-                        case 1:
-                            sendEmail("Identifiant (Caballero Software Inc.)", "Votre identifiant pour Caballero Software Inc. est : ", email, id);
-                            break;
-                        default:
-                            console.log('Problem in language data.');
-                            break;
-                    };
-                    response.json({ ok: 1 })
-                } else {
-                    response.json({ ok: 0 }) /* only after a day, recovery of the identifier is allowed */
-                }
+                response.json({ ok: 0 }) /* only after a day, recovery of the identifier is allowed */
             }
-        })
+        }
     }
 });
 
@@ -374,8 +376,8 @@ app.post('/newoffer', (request, response) => {
 app.get('/seealloffers', (request, response) => {
     const point1 = { lat: parseFloat(request.query.lat), lon: parseFloat(request.query.lon) };
     const dist = parseFloat(request.query.dist);
-    
-    const offers = users.map(value => 
+
+    const offers = users.map(value =>
         value.offers.filter(offer => {
             const point2 = offer.location;
             if (distance(point1, point2) <= dist) {
@@ -385,7 +387,7 @@ app.get('/seealloffers', (request, response) => {
             }
         })
     ).flat();
-    
+
     response.json({ ok: true, offers });
 });
 
@@ -417,7 +419,7 @@ app.post('/deloffer', (request, response) => {
         autoSave();
     } else {
         response.json({ ok: false });
-    } 
+    }
 });
 
 
