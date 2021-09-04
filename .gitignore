@@ -102,8 +102,3 @@ dist
 
 # TernJS port file
 .tern-port
-
-# database
-providers.txt
-userdb.csv
-offerdb.csv

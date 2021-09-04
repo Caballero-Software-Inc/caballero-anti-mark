@@ -145,22 +145,10 @@ copies or substantial portions of the Software.
 
 const createCsvWriter = writeCsv.createObjectCsvWriter;
 
-let users;
-let offers;
+let users = [];
+let offers = [];
 
 fs.readFile('userdb.csv', async (err, data) => {
-    if (err) {
-        const csvWriter = createCsvWriter({
-            path: 'userdb.csv',
-            header: [
-                        { id: 'email', title: 'email' },
-                        { id: 'id', title: 'id' },
-                        { id: 'recovery', title: 'recovery' }
-                    ]
-        });
-        users = [];
-        return
-    }
     users = await neatCsv(data);
     users = users.map(value => {
         value.recovery = parseInt(value.recovery);
@@ -169,21 +157,6 @@ fs.readFile('userdb.csv', async (err, data) => {
 });
 
 fs.readFile('offerdb.csv', async (err, data) => {
-    if (err) {
-        const csvWriter = createCsvWriter({
-            path: 'offerdb.csv',
-            header: [
-                        { id: 'email', title: 'email' },
-                        { id: 'kind', title: 'kind' },
-                        { id: 'web', title: 'web' },
-                        { id: 'lat', title: 'lat' },
-                        { id: 'lon', title: 'lon' },
-                        { id: 'description', title: 'description' }
-                    ]
-        })
-        offers = [];
-        return
-    }
     offers = await neatCsv(data);
     offers = offers.map(offer => {
         offer.lat = parseFloat(offer.lat);
