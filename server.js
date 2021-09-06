@@ -16,6 +16,7 @@ The above copyright notice and this permission notice shall be included in
 all copies or substantial portions of the Software.
 */
 
+
 const crypto = require('crypto');
 /* License
 
@@ -62,6 +63,7 @@ const lKey = 50;/* length of the key */
 
 const appLogin = 'caballerosoftwareinc@gmail.com';
 const appPassword = process.env.APPPASSWORD;
+
 
 // it is cryptographically secure
 function makeId(length) {
@@ -143,12 +145,72 @@ The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 */
 
+
+
+const AWS = require('aws-sdk');
+// https://github.com/aws/aws-sdk-js/blob/master/LICENSE.txt
+
+
+const ID = process.env.AWSAccessKeyId;
+const SECRET = process.env.AWSSecretKey;
+const BUCKET_NAME = process.env.BUCKET_NAME;
+const region = process.env.BUCKET_REGION;
+
+const accessKeyId = process.env.AccessKeyID;
+const secretAccessKey = process.env.SecretAccessKey;
+
+const s3 = new AWS.S3({
+    accessKeyId,
+    secretAccessKey,
+    region
+});
+
+
+function uploadFile(fileName) {
+    const fileContent = fs.readFileSync(fileName);
+
+    const params = {
+        Bucket: BUCKET_NAME,
+        Key: fileName, 
+        Body: fileContent
+    };
+
+    // Uploading files to the bucket
+    s3.upload(params, function(err, data) {
+        if (err) {
+            throw err;
+        }
+        console.log(`File uploaded successfully. ${data.Location}`);
+    });
+}
+
+
+
+function downloadFile(fileName) {
+    const params = {
+        Bucket: BUCKET_NAME,
+        Key: fileName
+    };
+
+    s3.getObject(params, (err, data) => {
+        if (err) {
+            throw err
+        }
+        fs.writeFileSync('./'+fileName, data.Body)
+        console.log('File downloaded successfully.')
+    })
+}
+
+downloadFile('userdb.csv');
+downloadFile('offerdb.csv');
+
+
 const createCsvWriter = writeCsv.createObjectCsvWriter;
 
 let users = [];
 let offers = [];
 
-fs.readFile('userdb.js', async (err, data) => {
+fs.readFile('userdb.csv', async (err, data) => {
     users = await neatCsv(data);
     users = users.map(value => {
         value.recovery = parseInt(value.recovery);
@@ -156,7 +218,7 @@ fs.readFile('userdb.js', async (err, data) => {
     });
 });
 
-fs.readFile('offerdb.js', async (err, data) => {
+fs.readFile('offerdb.csv', async (err, data) => {
     offers = await neatCsv(data);
     offers = offers.map(offer => {
         offer.lat = parseFloat(offer.lat);
@@ -171,6 +233,9 @@ function save(path, header, data) {
     csvWriter
         .writeRecords(data)
         .then(() => console.log('Saved'));
+
+    uploadFile('userdb.csv');
+    uploadFile('offerdb.csv');
 }
 
 
@@ -286,7 +351,7 @@ app.get('/account', async (request, response) => {
                 recovery: Date.now()
             };
             users.push(newUser);
-            save('userdb.js',
+            save('userdb.csv',
                 [
                     { id: 'email', title: 'email' },
                     { id: 'id', title: 'id' },
@@ -331,7 +396,7 @@ app.get('/retrieve', (request, response) => {
             if (Date.now() - users[j].recovery > recoveryTime) {
                 const id = users[j].id;
                 users[j].recovery = Date.now();
-                save('userdb.js',
+                save('userdb.csv',
                     [
                         { id: 'email', title: 'email' },
                         { id: 'id', title: 'id' },
@@ -389,7 +454,7 @@ app.post('/del', (request, response) => {
         users.splice(j, 1);
         response.json({ ok: true });
         // del user
-        save('userdb.js',
+        save('userdb.csv',
             [
                 { id: 'email', title: 'email' },
                 { id: 'id', title: 'id' },
@@ -398,7 +463,7 @@ app.post('/del', (request, response) => {
 
         //del offer
         offers = offers.filter(offer => offer.email != email);
-        save('offerdb.js',
+        save('offerdb.csv',
             [
                 { id: 'email', title: 'email' },
                 { id: 'kind', title: 'kind' },
@@ -425,7 +490,7 @@ app.post('/newoffer', (request, response) => {
         let newOffer = request.body.newOffer;
         newOffer.email = email;
         offers.push(newOffer);
-        save('offerdb.js',
+        save('offerdb.csv',
             [
                 { id: 'email', title: 'email' },
                 { id: 'kind', title: 'kind' },
@@ -513,7 +578,7 @@ app.post('/deloffer', (request, response) => {
         });
         response.json({ ok: true });
 
-        save('offerdb.js',
+        save('offerdb.csv',
             [
                 { id: 'email', title: 'email' },
                 { id: 'kind', title: 'kind' },

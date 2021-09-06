@@ -8,6 +8,7 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "aws-sdk": "^2.983.0",
     "cors": "^2.8.5",
     "crypto": "^1.0.1",
     "csv-writer": "^1.6.0",
