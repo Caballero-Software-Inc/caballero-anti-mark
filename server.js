@@ -171,12 +171,12 @@ function uploadFile(fileName) {
 
     const params = {
         Bucket: BUCKET_NAME,
-        Key: fileName, 
+        Key: fileName,
         Body: fileContent
     };
 
     // Uploading files to the bucket
-    s3.upload(params, function(err, data) {
+    s3.upload(params, function (err, data) {
         if (err) {
             throw err;
         }
@@ -186,7 +186,7 @@ function uploadFile(fileName) {
 
 
 
-function downloadFile(fileName) {
+function downloadFile(fileName, code) {
     const params = {
         Bucket: BUCKET_NAME,
         Key: fileName
@@ -196,46 +196,61 @@ function downloadFile(fileName) {
         if (err) {
             throw err
         }
-        fs.writeFileSync('./'+fileName, data.Body)
-        console.log('File downloaded successfully.')
+        fs.writeFileSync('./' + fileName, data.Body);
+        console.log('File downloaded successfully.');
+        code()
     })
 }
 
-downloadFile('userdb.csv');
-downloadFile('offerdb.csv');
 
 
-const createCsvWriter = writeCsv.createObjectCsvWriter;
-
-let users = [];
-let offers = [];
-
-fs.readFile('userdb.csv', async (err, data) => {
-    users = await neatCsv(data);
-    users = users.map(value => {
-        value.recovery = parseInt(value.recovery);
-        return value
+function getUsers(code) {
+    downloadFile('userdb.csv', () => {
+        fs.readFile('userdb.csv', async (err, data) => {
+            let users = await neatCsv(data);
+            users = users.map(value => {
+                value.recovery = parseInt(value.recovery);
+                return value
+            });
+            code(users)
+        });
     });
-});
+}
 
-fs.readFile('offerdb.csv', async (err, data) => {
-    offers = await neatCsv(data);
-    offers = offers.map(offer => {
-        offer.lat = parseFloat(offer.lat);
-        offer.lon = parseFloat(offer.lon);
-        return offer
+
+async function getOffers(code) {
+    downloadFile('offerdb.csv', () => {
+        fs.readFile('offerdb.csv', async (err, data) => {
+            let offers = await neatCsv(data);
+            offers = offers.map(offer => {
+                offer.lat = parseFloat(offer.lat);
+                offer.lon = parseFloat(offer.lon);
+                return offer
+            });
+            code(offers)
+        });
+    }); 
+}
+
+function getHashes(code) {
+    downloadFile('hashdb.csv', () => {
+        fs.readFile('hashdb.csv', async (err, data) => {
+            let hList = await neatCsv(data);
+            code(hList)
+        });
     });
-});
+}
 
 
 function save(path, header, data) {
+    const createCsvWriter = writeCsv.createObjectCsvWriter;
     const csvWriter = createCsvWriter({ path, header });
     csvWriter
         .writeRecords(data)
-        .then(() => console.log('Saved'));
-
-    uploadFile('userdb.csv');
-    uploadFile('offerdb.csv');
+        .then(() => {
+            uploadFile(path);
+            console.log('Saved')
+        });
 }
 
 
@@ -275,6 +290,36 @@ app.disable('etag');//to guarantee that res.statusCode = 200, unless there is an
 app.use(express.static('public'));
 app.use(express.json({ limit: '5mb' }));
 
+
+
+
+
+//init
+/*
+save('userdb.csv',
+    [
+        { id: 'email', title: 'email' },
+        { id: 'id', title: 'id' },
+        { id: 'recovery', title: 'recovery' },
+        { id: 'credits', title: 'credits' }
+    ], []);
+
+
+save('hashdb.csv',
+    [
+        { id: 'hash', title: 'hash' }
+    ], []);
+
+save('offerdb.csv',
+    [
+        { id: 'email', title: 'email' },
+        { id: 'kind', title: 'kind' },
+        { id: 'web', title: 'web' },
+        { id: 'lat', title: 'lat' },
+        { id: 'lon', title: 'lon' },
+        { id: 'description', title: 'description' }
+    ], []);
+*/
 
 
 /* Chapter: new user */
@@ -329,85 +374,71 @@ app.get('/nonce', async (request, response) => {
     response.json({ ok: true, nonce: nonces[crypto.randomInt(nonces.length)] });
 });
 
+
+
 app.get('/account', async (request, response) => {
+    getUsers(async users => {
+        const userNonce = request.query.nonce;
+        const i = nonces.findIndex(value => value === userNonce);
 
-    const userNonce = request.query.nonce;
-    const i = nonces.findIndex(value => value === userNonce);
-
-    if (i === -1) {
-        response.json({ ok: 2 })
-    } else {
-        nonces.splice(i, 1);
-        nonces.push(makeId(lKey));
-
-        const userEmail = request.query.email;
-        const userLang = parseInt(request.query.lang);
-        const j = users.findIndex(value => value.email === userEmail);
-        if (j === -1) {
-            const id = makeId(lKey);
-            const newUser = {
-                email: userEmail,
-                id: id,
-                recovery: Date.now()
-            };
-            users.push(newUser);
-            save('userdb.csv',
-                [
-                    { id: 'email', title: 'email' },
-                    { id: 'id', title: 'id' },
-                    { id: 'recovery', title: 'recovery' }
-                ], users);
-
-            switch (userLang) {
-                case 0:
-                    sendEmail("Identifier (Caballero Software Inc.)", "Your identifier for Caballero Software Inc. is: ", userEmail, id);
-                    break;
-                case 1:
-                    sendEmail("Identifiant (Caballero Software Inc.)", "Votre identifiant pour Caballero Software Inc. est : ", userEmail, id);
-                    break;
-                default:
-                    console.log('Problem in language data.');
-                    break;
-            };
-            response.json({ ok: 1 })
+        if (i === -1) {
+            response.json({ ok: 2 })
         } else {
-            response.json({ ok: 0 })
-        }
-    }
-});
+            nonces.splice(i, 1);
+            nonces.push(makeId(lKey));
 
-app.get('/retrieve', (request, response) => {
-    const email = request.query.email;
-    const userLang = parseInt(request.query.lang);
-    const userNonce = request.query.nonce;
-    const i = nonces.findIndex(value => value === userNonce);
+            const userEmail = request.query.email;
+            const userLang = parseInt(request.query.lang);
+            const j = users.findIndex(value => value.email === userEmail);
+            if (j === -1) {
+                const id = makeId(lKey);
+                const {
+                    createHash
+                } = await import('crypto');
 
-    if (i === -1) {
-        response.json({ ok: 2 })
-    } else {
-        nonces.splice(i, 1);
-        nonces.push(makeId(lKey));
+                const hash = createHash('sha256');
 
-        const j = users.findIndex(value => value.email === email);
+                hash.update(userEmail);
 
-        if (j === -1) {
-            response.json({ ok: 0 }) /* email not found */
-        } else {
-            if (Date.now() - users[j].recovery > recoveryTime) {
-                const id = users[j].id;
-                users[j].recovery = Date.now();
-                save('userdb.csv',
-                    [
-                        { id: 'email', title: 'email' },
-                        { id: 'id', title: 'id' },
-                        { id: 'recovery', title: 'recovery' }
-                    ], users);
+                const emailHash = hash.digest('hex');
+
+                getHashes(hList => {
+                    const i = hList.findIndex(value => value.hash === emailHash);
+
+                    let credits;
+                    if (i === -1) {
+                        hList.push({ hash: emailHash });
+                        save('hashdb.csv',
+                            [
+                                { id: 'hash', title: 'hash' }
+                            ], hList);
+                        credits = 1000
+                    } else {
+                        credits = 0
+                    }
+
+                    const newUser = {
+                        email: userEmail,
+                        id: id,
+                        recovery: Date.now(),
+                        credits: credits
+                    };
+                    users.push(newUser);
+                    save('userdb.csv',
+                        [
+                            { id: 'email', title: 'email' },
+                            { id: 'id', title: 'id' },
+                            { id: 'recovery', title: 'recovery' },
+                            { id: 'credits', title: 'credits' }
+                        ], users);
+                });
+
                 switch (userLang) {
                     case 0:
-                        sendEmail("Identifier (Caballero Software Inc.)", "Your identifier for Caballero Software Inc. is: ", email, id);
+                        sendEmail("Identifier (Caballero Software Inc.)", "Your identifier for Caballero Software Inc. is: ", userEmail, id);
                         break;
                     case 1:
-                        sendEmail("Identifiant (Caballero Software Inc.)", "Votre identifiant pour Caballero Software Inc. est : ", email, id);
+                        sendEmail("Identifiant (Caballero Software Inc.)", "Votre identifiant pour Caballero Software Inc. est : ", userEmail, id);
                         break;
                     default:
                         console.log('Problem in language data.');
@@ -415,120 +446,196 @@ app.get('/retrieve', (request, response) => {
                 };
                 response.json({ ok: 1 })
             } else {
-                response.json({ ok: 0 }) /* only after a day, recovery of the identifier is allowed */
+                response.json({ ok: 0 })
             }
         }
-    }
+    });
+});
+
+app.get('/retrieve', (request, response) => {
+    getUsers(users => {
+        const email = request.query.email;
+        const userLang = parseInt(request.query.lang);
+        const userNonce = request.query.nonce;
+        const i = nonces.findIndex(value => value === userNonce);
+
+        if (i === -1) {
+            response.json({ ok: 2 })
+        } else {
+            nonces.splice(i, 1);
+            nonces.push(makeId(lKey));
+
+            const j = users.findIndex(value => value.email === email);
+
+            if (j === -1) {
+                response.json({ ok: 0 }) /* email not found */
+            } else {
+                if (Date.now() - users[j].recovery > recoveryTime) {
+                    const id = users[j].id;
+                    users[j].recovery = Date.now();
+                    save('userdb.csv',
+                        [
+                            { id: 'email', title: 'email' },
+                            { id: 'id', title: 'id' },
+                            { id: 'recovery', title: 'recovery' },
+                            { id: 'credits', title: 'credits' }
+                        ], users);
+                    switch (userLang) {
+                        case 0:
+                            sendEmail("Identifier (Caballero Software Inc.)", "Your identifier for Caballero Software Inc. is: ", email, id);
+                            break;
+                        case 1:
+                            sendEmail("Identifiant (Caballero Software Inc.)", "Votre identifiant pour Caballero Software Inc. est : ", email, id);
+                            break;
+                        default:
+                            console.log('Problem in language data.');
+                            break;
+                    };
+                    response.json({ ok: 1 })
+                } else {
+                    response.json({ ok: 0 }) /* only after a day, recovery of the identifier is allowed */
+                }
+            }
+        }
+
+    });
 });
 
 
 /* authentication */
 app.get('/auth', (request, response) => {
-    const id = request.query.id;
-    const email = request.query.email;
+    getUsers(users => {
+        const id = request.query.id;
+        const email = request.query.email;
 
-    const j = users.findIndex(value => value.id === id);
+        const j = users.findIndex(value => value.id === id);
 
-    if (j === -1) {
-        response.json({ ok: false })
-    } else {
-        if (users[j].email == email) {
-            if (users[j].email == "caballero@caballero.software") {
-                response.json({ ok: true, providers: users })
-            } else {
-                response.json({ ok: true })
-            }
-        } else {
+        if (j === -1) {
             response.json({ ok: false })
+        } else {
+            if (users[j].email === email) {
+                response.json({ ok: true })
+            } else {
+                response.json({ ok: false })
+            }
         }
-    }
+    });
+});
+
+/* credits */
+app.get('/credits', (request, response) => {
+    getUsers(users => {
+        const id = request.query.id;
+        const email = request.query.email;
+
+        const j = users.findIndex(value => value.id === id);
+
+        if (j === -1) {
+            response.json({ ok: false })
+        } else {
+            if (users[j].email == email) {
+                response.json({ ok: true, credits: users[j].credits })
+            } else {
+                response.json({ ok: false })
+            }
+        }
+    });
 });
 
 /* delete account */
 app.post('/del', (request, response) => {
-    const id = request.body.userId;
-    const j = users.findIndex(value => value.id === id);
-    const email = request.body.userEmail;
+    getUsers(users => {
+        const id = request.body.userId;
+        const j = users.findIndex(value => value.id === id);
+        const email = request.body.userEmail;
 
-    if (users[j].email == email) {
-        users.splice(j, 1);
-        response.json({ ok: true });
-        // del user
-        save('userdb.csv',
-            [
-                { id: 'email', title: 'email' },
-                { id: 'id', title: 'id' },
-                { id: 'recovery', title: 'recovery' }
-            ], users);
+        if (users[j].email === email) {
+            users.splice(j, 1);
+            response.json({ ok: true });
+            // del user
+            save('userdb.csv',
+                [
+                    { id: 'email', title: 'email' },
+                    { id: 'id', title: 'id' },
+                    { id: 'recovery', title: 'recovery' },
+                    { id: 'credits', title: 'credits' }
+                ], users);
 
-        //del offer
-        offers = offers.filter(offer => offer.email != email);
-        save('offerdb.csv',
-            [
-                { id: 'email', title: 'email' },
-                { id: 'kind', title: 'kind' },
-                { id: 'web', title: 'web' },
-                { id: 'lat', title: 'lat' },
-                { id: 'lon', title: 'lon' },
-                { id: 'description', title: 'description' }
-            ], offers);
-
-    } else {
-        response.json({ ok: false });
-    }
+            //del offer
+            getOffers(offers => {
+                offers = offers.filter(offer => offer.email != email);
+                save('offerdb.csv',
+                    [
+                        { id: 'email', title: 'email' },
+                        { id: 'kind', title: 'kind' },
+                        { id: 'web', title: 'web' },
+                        { id: 'lat', title: 'lat' },
+                        { id: 'lon', title: 'lon' },
+                        { id: 'description', title: 'description' }
+                    ], offers);
+            })
+        } else {
+            response.json({ ok: false });
+        }
+    });
 });
 
 
 // offers
 app.post('/newoffer', (request, response) => {
-    const id = request.body.userId;
-    const email = request.body.userEmail;
-    const j = users.findIndex(value => value.email === email);
-
-
-    if (users[j].id === id) {
-        let newOffer = request.body.newOffer;
-        newOffer.email = email;
-        offers.push(newOffer);
-        save('offerdb.csv',
-            [
-                { id: 'email', title: 'email' },
-                { id: 'kind', title: 'kind' },
-                { id: 'web', title: 'web' },
-                { id: 'lat', title: 'lat' },
-                { id: 'lon', title: 'lon' },
-                { id: 'description', title: 'description' }
-            ], offers);
-        response.json({ ok: true });
-    } else {
-        response.json({ ok: false });
-    }
+    getUsers(users => {
+        const id = request.body.userId;
+        const email = request.body.userEmail;
+        const j = users.findIndex(value => value.email === email);
+        if (users[j].id === id) {
+            getOffers(offers => {
+                let newOffer = request.body.newOffer;
+                newOffer.email = email;
+                offers.push(newOffer);
+                save('offerdb.csv',
+                    [
+                        { id: 'email', title: 'email' },
+                        { id: 'kind', title: 'kind' },
+                        { id: 'web', title: 'web' },
+                        { id: 'lat', title: 'lat' },
+                        { id: 'lon', title: 'lon' },
+                        { id: 'description', title: 'description' }
+                    ], offers);
+            });
+            response.json({ ok: true });
+        } else {
+            response.json({ ok: false });
+        }
+    });
 });
 
 
 
+
 app.get('/seealloffers', (request, response) => {
-    const point1 = { lat: parseFloat(request.query.lat), lon: parseFloat(request.query.lon) };
-    const dist = parseFloat(request.query.dist);
-    const nearOffers = offers.filter(offer => {
-        const point2 = { lat: offer.lat, lon: offer.lon };
-        if (distance(point1, point2) <= dist) {
-            return true
-        } else {
-            return false
-        }
-    }).flat()
-        .map(offer => {
-            const noemail = {
-                kind: offer.kind,
-                web: offer.web,
-                lat: offer.lat,
-                lon: offer.lon,
-                description: offer.description
+    getOffers(offers => {
+        const point1 = { lat: parseFloat(request.query.lat), lon: parseFloat(request.query.lon) };
+        const dist = parseFloat(request.query.dist);
+        const nearOffers = offers.filter(offer => {
+            const point2 = { lat: offer.lat, lon: offer.lon };
+            if (distance(point1, point2) <= dist) {
+                return true
+            } else {
+                return false
             }
-            return noemail
-        });
-    response.json({ ok: true, offers: nearOffers });
+        }).flat()
+            .map(offer => {
+                const noemail = {
+                    kind: offer.kind,
+                    web: offer.web,
+                    lat: offer.lat,
+                    lon: offer.lon,
+                    description: offer.description
+                }
+                return noemail
+            });
+        response.json({ ok: true, offers: nearOffers });
+    });
 });
 
 function withoutEmail(offer) {
@@ -543,61 +650,60 @@ function withoutEmail(offer) {
 }
 
 app.post('/seeoffers', (request, response) => {
-    const email = request.body.userEmail;
-    const id = request.body.userId;
+    getUsers(users => {
+        const email = request.body.userEmail;
+        const id = request.body.userId;
 
-    const j = users.findIndex(value => value.id === id);
+        const j = users.findIndex(value => value.id === id);
 
-    if (users[j].email === email) {
-        let myOffers = offers.filter(offer => {
-            return offer.email === email
-        }).map(offer => {
-            return withoutEmail(offer)
-        });
-        response.json({ ok: true, offers: myOffers });
-    } else {
-        response.json({ ok: false });
-    }
+        if (users[j].email === email) {
+            getOffers(offers => {
+                const myOffers = offers.filter(offer => {
+                    return offer.email === email
+                }).map(offer => {
+                    return withoutEmail(offer)
+                });
+                response.json({ ok: true, offers: myOffers });
+            })
+        } else {
+            response.json({ ok: false });
+        }
+    });
 });
+
 
 app.post('/deloffer', (request, response) => {
-    const email = request.body.userEmail;
-    const id = request.body.userId;
-    const str = JSON.stringify(request.body.str);
+    getUsers(users => {
 
-    const j = users.findIndex(value => value.id === id);
+        const email = request.body.userEmail;
+        const id = request.body.userId;
+        const str = JSON.stringify(request.body.str);
 
-    if (users[j].email === email) {
+        const j = users.findIndex(value => value.id === id);
 
-        offers = offers.filter(offer => {
-            const b = (JSON.stringify(withoutEmail(offer)) != str);
-            console.log(str);
-            console.log(JSON.stringify(withoutEmail(offer)));
-            console.log(b);
-            return b
-        });
-        response.json({ ok: true });
+        if (users[j].email === email) {
+            getOffers(offers => {
+                offers = offers.filter(offer => {
+                    return (JSON.stringify(withoutEmail(offer)) != str)
+                });
+                response.json({ ok: true });
 
-        save('offerdb.csv',
-            [
-                { id: 'email', title: 'email' },
-                { id: 'kind', title: 'kind' },
-                { id: 'web', title: 'web' },
-                { id: 'lat', title: 'lat' },
-                { id: 'lon', title: 'lon' },
-                { id: 'description', title: 'description' }
-            ], offers);
-    } else {
-        response.json({ ok: false });
-    }
+                save('offerdb.csv',
+                    [
+                        { id: 'email', title: 'email' },
+                        { id: 'kind', title: 'kind' },
+                        { id: 'web', title: 'web' },
+                        { id: 'lat', title: 'lat' },
+                        { id: 'lon', title: 'lon' },
+                        { id: 'description', title: 'description' }
+                    ], offers);
+            })
+        } else {
+            response.json({ ok: false });
+        }
+    });
 });
 
-
-// admin
-app.post('/upload', (request, response) => {
-    users = request.body.file.split('\n').filter(x => x != '').map(x => JSON.parse(x));
-    response.json({ ok: true });
-});
 
 
 function toRad(x) {
