@@ -229,7 +229,7 @@ async function getOffers(code) {
             });
             code(offers)
         });
-    }); 
+    });
 }
 
 function getHashes(code) {
@@ -614,27 +614,30 @@ app.post('/newoffer', (request, response) => {
 
 app.get('/seealloffers', (request, response) => {
     getOffers(offers => {
-        const point1 = { lat: parseFloat(request.query.lat), lon: parseFloat(request.query.lon) };
-        const dist = parseFloat(request.query.dist);
-        const nearOffers = offers.filter(offer => {
-            const point2 = { lat: offer.lat, lon: offer.lon };
-            if (distance(point1, point2) <= dist) {
-                return true
-            } else {
-                return false
-            }
-        }).flat()
-            .map(offer => {
-                const noemail = {
-                    kind: offer.kind,
-                    web: offer.web,
-                    lat: offer.lat,
-                    lon: offer.lon,
-                    description: offer.description
+        getUsers(users => {
+            const point1 = { lat: parseFloat(request.query.lat), lon: parseFloat(request.query.lon) };
+            const dist = parseFloat(request.query.dist);
+            const nearOffers = offers.filter(offer => {
+                const point2 = { lat: offer.lat, lon: offer.lon };
+                if (distance(point1, point2) <= dist) {
+                    const i = users.findIndex(user => user.email === offer.email);
+                    return (users[i].credits > 0)
+                } else {
+                    return false
                 }
-                return noemail
-            });
-        response.json({ ok: true, offers: nearOffers });
+            }).flat()
+                .map(offer => {
+                    const noemail = {
+                        kind: offer.kind,
+                        web: offer.web,
+                        lat: offer.lat,
+                        lon: offer.lon,
+                        description: offer.description
+                    }
+                    return noemail
+                });
+            response.json({ ok: true, offers: nearOffers });
+        });
     });
 });
 
@@ -703,6 +706,28 @@ app.post('/deloffer', (request, response) => {
         }
     });
 });
+
+
+app.post('/deccredits', async (request, response) => {
+    let web = await request.body.web;
+    getOffers(offers => {
+        const i = offers.findIndex(value => value.web === web);
+        const email = offers[i].email;
+        getUsers(users => {
+            const j = users.findIndex(value => value.email === email);
+            users[j].credits = users[j].credits - 1;
+            save('userdb.csv',
+                [
+                    { id: 'email', title: 'email' },
+                    { id: 'id', title: 'id' },
+                    { id: 'recovery', title: 'recovery' },
+                    { id: 'credits', title: 'credits' }
+                ], users);
+        })
+    });
+    response.json({ ok: true });
+});
+
 
 
 
