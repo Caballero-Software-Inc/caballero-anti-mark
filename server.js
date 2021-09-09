@@ -690,12 +690,12 @@ app.get('/seealloffers', (request, response) => {
 
 
 
-app.post('/seealljobs', (_request, response) => {
+app.get('/seealljobs', (_request, response) => {
     getJobs(jobs => {
         getUsers(users => {
             const validJobs = jobs.filter(job => {
                 const i = users.findIndex(user => user.email === job.email);
-                return (users[i].credits > 0)
+                return (i==-1)?false:(users[i].credits > 0)
             }).flat()
                 .map(job => withoutEmailJob(job));
             response.json({ ok: true, jobs: validJobs });
