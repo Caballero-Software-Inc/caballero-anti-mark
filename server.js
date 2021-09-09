@@ -443,7 +443,7 @@ app.get('/account', async (request, response) => {
                             [
                                 { id: 'hash', title: 'hash' }
                             ], hList);
-                        credits = 1000
+                        credits = 100
                     } else {
                         credits = 0
                     }
