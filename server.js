@@ -16,6 +16,12 @@ The above copyright notice and this permission notice shall be included in
 all copies or substantial portions of the Software.
 */
 
+const useAWS = true;
+
+
+
+
+
 
 const crypto = require('crypto');
 /* License
@@ -56,7 +62,7 @@ modification, are permitted provided that the following conditions are met:
 dotenv.config();
 
 
-const recoveryTime = 10 //86400000; // time from one recovery of code to another
+const recoveryTime = 86400000; // time from one recovery of code to another
 const lKey = 50;/* length of the key */
 
 
@@ -75,8 +81,6 @@ function makeId(length) {
     return result;
 }
 
-
-let tempSeed = makeId(50); // initialization
 
 const express = require('express');
 /* 
@@ -167,39 +171,47 @@ const s3 = new AWS.S3({
 
 
 function uploadFile(fileName) {
-    const fileContent = fs.readFileSync(fileName);
+    if (useAWS) {
+        const fileContent = fs.readFileSync(fileName);
 
-    const params = {
-        Bucket: BUCKET_NAME,
-        Key: fileName,
-        Body: fileContent
-    };
+        const params = {
+            Bucket: BUCKET_NAME,
+            Key: fileName,
+            Body: fileContent
+        };
 
-    // Uploading files to the bucket
-    s3.upload(params, function (err, data) {
-        if (err) {
-            throw err;
-        }
-        console.log(`File uploaded successfully. ${data.Location}`);
-    });
+        // Uploading files to the bucket
+        s3.upload(params, function (err, data) {
+            if (err) {
+                throw err;
+            }
+            console.log(`File uploaded successfully. ${data.Location}`);
+        });
+    } else {
+        console.log(`File not uploaded.`);
+    }
 }
 
 
-
 function downloadFile(fileName, code) {
-    const params = {
-        Bucket: BUCKET_NAME,
-        Key: fileName
-    };
+    if (useAWS) {
+        const params = {
+            Bucket: BUCKET_NAME,
+            Key: fileName
+        };
 
-    s3.getObject(params, (err, data) => {
-        if (err) {
-            throw err
-        }
-        fs.writeFileSync('./' + fileName, data.Body);
-        console.log('File downloaded successfully.');
+        s3.getObject(params, (err, data) => {
+            if (err) {
+                throw err
+            }
+            fs.writeFileSync('./' + fileName, data.Body);
+            console.log('File downloaded successfully.');
+            code()
+        })
+    } else {
+        console.log('File not downloaded.');
         code()
-    })
+    }
 }
 
 
@@ -241,6 +253,15 @@ function getHashes(code) {
     });
 }
 
+function getJobs(code) {
+    downloadFile('jobdb.csv', () => {
+        fs.readFile('jobdb.csv', async (err, data) => {
+            let jobs = await neatCsv(data);
+            code(jobs)
+        });
+    });
+}
+
 
 function save(path, header, data) {
     const createCsvWriter = writeCsv.createObjectCsvWriter;
@@ -278,7 +299,7 @@ included in all copies or substantial portions of the Software.
 /* to fetch the api from every origin */
 app.use(
     cors({
-        origin: "*"
+        origin: "https://caballero.software/antimark/index.html"
     })
 );
 
@@ -319,7 +340,17 @@ save('offerdb.csv',
         { id: 'lon', title: 'lon' },
         { id: 'description', title: 'description' }
     ], []);
+
+    save('jobdb.csv',
+    [
+        { id: 'email', title: 'email' },
+        { id: 'kind', title: 'kind' },
+        { id: 'web', title: 'web' },
+        { id: 'skills', title: 'skills' },
+        { id: 'country', title: 'country' }
+    ], []);
 */
+
 
 
 /* Chapter: new user */
@@ -609,6 +640,31 @@ app.post('/newoffer', (request, response) => {
     });
 });
 
+app.post('/newjob', (request, response) => {
+    getUsers(users => {
+        const id = request.body.userId;
+        const email = request.body.userEmail;
+        const j = users.findIndex(value => value.email === email);
+        if (users[j].id === id) {
+            getJobs(jobs => {
+                let newJob = request.body.newJob;
+                newJob.email = email;
+                jobs.push(newJob);
+                save('jobdb.csv',
+                    [
+                        { id: 'email', title: 'email' },
+                        { id: 'kind', title: 'kind' },
+                        { id: 'web', title: 'web' },
+                        { id: 'skills', title: 'skills' },
+                        { id: 'country', title: 'country' }
+                    ], jobs);
+            });
+            response.json({ ok: true });
+        } else {
+            response.json({ ok: false });
+        }
+    });
+});
 
 
 
@@ -626,20 +682,27 @@ app.get('/seealloffers', (request, response) => {
                     return false
                 }
             }).flat()
-                .map(offer => {
-                    const noemail = {
-                        kind: offer.kind,
-                        web: offer.web,
-                        lat: offer.lat,
-                        lon: offer.lon,
-                        description: offer.description
-                    }
-                    return noemail
-                });
+                .map(offer => withoutEmail(offer));
             response.json({ ok: true, offers: nearOffers });
         });
     });
 });
+
+
+
+app.get('/seealljobs', (request, response) => {
+    getJobs(jobs => {
+        getUsers(users => {
+            const validJobs = jobs.filter(job => {
+                const i = users.findIndex(user => user.email === job.email);
+                return (users[i].credits > 0)
+            }).flat()
+                .map(job => withoutEmailJob(job));
+            response.json({ ok: true, jobs: validJobs });
+        });
+    });
+});
+
 
 function withoutEmail(offer) {
     const noEmail = {
@@ -651,6 +714,18 @@ function withoutEmail(offer) {
     };
     return noEmail
 }
+
+function withoutEmailJob(job) {
+    const noEmail = {
+        kind: job.kind,
+        web: job.web,
+        skills: job.skills,
+        country: job.country
+    };
+    return noEmail
+}
+
+
 
 app.post('/seeoffers', (request, response) => {
     getUsers(users => {
@@ -673,6 +748,29 @@ app.post('/seeoffers', (request, response) => {
         }
     });
 });
+
+app.post('/seejobs', (request, response) => {
+    getUsers(users => {
+        const email = request.body.userEmail;
+        const id = request.body.userId;
+
+        const j = users.findIndex(value => value.id === id);
+
+        if (users[j].email === email) {
+            getJobs(jobs => {
+                const myJobs = jobs.filter(job => {
+                    return job.email === email
+                }).map(job => {
+                    return withoutEmailJob(job)
+                });
+                response.json({ ok: true, jobs: myJobs });
+            })
+        } else {
+            response.json({ ok: false });
+        }
+    });
+});
+
 
 
 app.post('/deloffer', (request, response) => {
@@ -708,6 +806,38 @@ app.post('/deloffer', (request, response) => {
 });
 
 
+
+app.post('/deljob', (request, response) => {
+    getUsers(users => {
+
+        const email = request.body.userEmail;
+        const id = request.body.userId;
+        const str = JSON.stringify(request.body.str);
+
+        const j = users.findIndex(value => value.id === id);
+
+        if (users[j].email === email) {
+            getJobs(jobs => {
+                jobs = jobs.filter(job => {
+                    return (JSON.stringify(withoutEmailJob(job)) != str)
+                });
+                response.json({ ok: true });
+
+                save('jobdb.csv',
+                    [
+                        { id: 'email', title: 'email' },
+                        { id: 'kind', title: 'kind' },
+                        { id: 'web', title: 'web' },
+                        { id: 'skills', title: 'skills' },
+                        { id: 'country', title: 'country' }
+                    ], jobs);
+            })
+        } else {
+            response.json({ ok: false });
+        }
+    });
+});
+
 app.post('/deccredits', async (request, response) => {
     let web = await request.body.web;
     getOffers(offers => {
@@ -728,7 +858,25 @@ app.post('/deccredits', async (request, response) => {
     response.json({ ok: true });
 });
 
-
+app.post('/deccreditsjobs', async (request, response) => {
+    let web = await request.body.web;
+    getJobs(jobs => {
+        const i = jobs.findIndex(job => job.web === web);
+        const email = jobs[i].email;
+        getUsers(users => {
+            const j = users.findIndex(user => user.email === email);
+            users[j].credits = users[j].credits - 1;
+            save('userdb.csv',
+                [
+                    { id: 'email', title: 'email' },
+                    { id: 'id', title: 'id' },
+                    { id: 'recovery', title: 'recovery' },
+                    { id: 'credits', title: 'credits' }
+                ], users);
+        })
+    });
+    response.json({ ok: true });
+});
 
 
 function toRad(x) {
