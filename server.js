@@ -690,7 +690,7 @@ app.get('/seealloffers', (request, response) => {
 
 
 
-app.get('/seealljobs', (request, response) => {
+app.get('/seealljobs', (_request, response) => {
     getJobs(jobs => {
         getUsers(users => {
             const validJobs = jobs.filter(job => {
